@@ -1,0 +1,34 @@
+# Build outputs
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.cache
+
+# NuGet
+packages/
+*.nupkg
+
+# Logs (from our Logger)
+logs/
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Rider
+.idea/
+
+# Test results
+TestResults/
+*.trx

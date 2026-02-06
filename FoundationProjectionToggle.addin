@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  REVIT ADD-IN MANIFEST
+  =====================
+  This file tells Revit how to load our add-in.
+
+  DEPLOYMENT LOCATION:
+  %APPDATA%\Autodesk\Revit\Addins\{version}\FoundationProjectionToggle.addin
+
+  The post-build script copies this file automatically.
+
+  GUID USAGE:
+  The ClientId GUID uniquely identifies this add-in across all Revit installations.
+  - NEVER change this GUID after release (breaks user settings)
+  - NEVER reuse from another add-in (causes conflicts)
+  - Generate once using Visual Studio or online GUID generator
+-->
+<RevitAddIns>
+  <AddIn Type="Application">
+    <!--
+      CLIENTID (GUID)
+      Unique identifier for this add-in. Generated once, never changed.
+      Used by Revit to track user preferences, keyboard shortcuts, etc.
+    -->
+    <ClientId>7F3E8A2B-9C4D-4E5F-B6A7-8C9D0E1F2A3B</ClientId>
+
+    <!-- Display name in Revit Add-Ins tab and About dialog -->
+    <Name>Foundation Projection Toggle</Name>
+
+    <!--
+      ASSEMBLY PATH
+      Relative path from this .addin file to the DLL.
+      Since both files are in the same Addins folder, just the filename.
+    -->
+    <Assembly>FoundationProjectionToggle.dll</Assembly>
+
+    <!--
+      FULL CLASS NAME
+      The class that implements IExternalApplication.
+      Revit instantiates this class and calls OnStartup/OnShutdown.
+    -->
+    <FullClassName>FoundationProjectionToggle.App</FullClassName>
+
+    <!-- Vendor identification for support and licensing -->
+    <VendorId>WITTEVEENBOS</VendorId>
+    <VendorDescription>Witteveen+Bos, https://www.witteveenbos.com</VendorDescription>
+  </AddIn>
+</RevitAddIns>

@@ -1,0 +1,176 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    MULTI-VERSION BUILD CONFIGURATION
+    =================================
+    This project supports Revit 2022-2025 via the RevitVersion property.
+
+    Build commands:
+      dotnet build -c Release -p:RevitVersion=2022
+      dotnet build -c Release -p:RevitVersion=2023  (default)
+      dotnet build -c Release -p:RevitVersion=2024
+      dotnet build -c Release -p:RevitVersion=2025
+
+    The SDK version is automatically matched to the Revit version.
+    Output deploys to the correct Addins folder automatically.
+  -->
+
+  <PropertyGroup>
+    <!-- Default to Revit 2023 if not specified -->
+    <RevitVersion Condition="'$(RevitVersion)'==''">2023</RevitVersion>
+
+    <!--
+      TARGET FRAMEWORK
+      Revit 2022-2024: .NET Framework 4.8
+      Revit 2025+: .NET 8 (handled separately, see note below)
+
+      NOTE: Revit 2025 migration to .NET 8 may require this project
+      to be split or use multi-targeting. For now, we target 4.8 for
+      2022-2024 which covers ~90% of users. 2025 support is roadmap item.
+    -->
+    <TargetFramework>net48</TargetFramework>
+
+    <!-- Revit is 64-bit only -->
+    <PlatformTarget>x64</PlatformTarget>
+    <Platforms>x64</Platforms>
+
+    <!-- Assembly configuration -->
+    <AssemblyName>FoundationProjectionToggle</AssemblyName>
+    <RootNamespace>FoundationProjectionToggle</RootNamespace>
+    <Version>1.0.0</Version>
+    <Authors>Witteveen+Bos</Authors>
+    <Company>Witteveen+Bos</Company>
+    <Description>Toggle projection line visibility for Structural Foundations</Description>
+
+    <!--
+      OUTPUT CONFIGURATION
+      Build output goes to version-specific folder for organization.
+      This prevents version conflicts during development.
+    -->
+    <OutputPath>bin\$(Configuration)\Revit$(RevitVersion)\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+
+    <!-- Disable features not needed/supported -->
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+
+    <!--
+      REVIT ADDINS DEPLOYMENT PATH
+      Standard Autodesk path for current user installation.
+      For all-users deployment, use ProgramData instead of AppData.
+    -->
+    <RevitAddinFolder>$(APPDATA)\Autodesk\Revit\Addins\$(RevitVersion)</RevitAddinFolder>
+  </PropertyGroup>
+
+  <!--
+    REVIT SDK REFERENCES
+    ====================
+    Each Revit version requires its specific SDK version.
+    The SDK provides: RevitAPI.dll, RevitAPIUI.dll, AdWindows.dll
+
+    IMPORTANT: These are compile-time references only.
+    At runtime, Revit provides its own copies of these assemblies.
+    Setting Private=False prevents copying to output (which would fail to load).
+  -->
+
+  <ItemGroup Condition="'$(RevitVersion)'=='2022'">
+    <PackageReference Include="Autodesk.Revit.SDK" Version="2022.*">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(RevitVersion)'=='2023'">
+    <PackageReference Include="Autodesk.Revit.SDK" Version="2023.*">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(RevitVersion)'=='2024'">
+    <PackageReference Include="Autodesk.Revit.SDK" Version="2024.*">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <!--
+    REVIT 2025 NOTE
+    ===============
+    Revit 2025 uses .NET 8 which is a breaking change from .NET Framework 4.8.
+    Full support requires multi-targeting or a separate project.
+    This is tracked as a v2.0 roadmap item.
+
+    For now, attempting to build for 2025 with this project will work but
+    the runtime behavior is undefined. Users should wait for v2.0.
+  -->
+  <ItemGroup Condition="'$(RevitVersion)'=='2025'">
+    <PackageReference Include="Autodesk.Revit.SDK" Version="2025.*">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <!--
+    WPF REFERENCES
+    ==============
+    Required for BitmapImage (button icons) and other UI elements.
+    These are part of .NET Framework, no package reference needed.
+  -->
+  <ItemGroup>
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="System.Xaml" />
+  </ItemGroup>
+
+  <!--
+    EMBEDDED RESOURCES
+    ==================
+    Icons are embedded in the DLL as resources.
+    This enables single-file deployment (just DLL + .addin manifest).
+
+    Resource naming convention:
+      {RootNamespace}.{FolderPath.With.Dots}.{Filename}
+      Example: FoundationProjectionToggle.UI.Resources.icons.projection-on-32.png
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="UI\Resources\icons\*.png" />
+  </ItemGroup>
+
+  <!--
+    POST-BUILD DEPLOYMENT
+    =====================
+    Automatically copies build output to Revit Addins folder.
+
+    This runs after every successful build, enabling rapid iteration:
+    1. Make code change
+    2. Build (Ctrl+Shift+B)
+    3. Start Revit (or use Revit API hotload if enabled)
+    4. Test
+
+    Files deployed:
+    - FoundationProjectionToggle.dll (the add-in assembly)
+    - FoundationProjectionToggle.addin (manifest file)
+
+    NOTE: Revit must be closed to overwrite files, or use hotload add-in.
+  -->
+  <Target Name="DeployAddin" AfterTargets="Build" Condition="'$(Configuration)'=='Release' Or '$(Configuration)'=='Debug'">
+    <Message Importance="high" Text="Deploying to Revit $(RevitVersion) Addins folder..." />
+
+    <!-- Create target folder if it doesn't exist -->
+    <MakeDir Directories="$(RevitAddinFolder)" Condition="!Exists('$(RevitAddinFolder)')" />
+
+    <!-- Copy DLL -->
+    <Copy
+      SourceFiles="$(TargetPath)"
+      DestinationFolder="$(RevitAddinFolder)"
+      SkipUnchangedFiles="true" />
+
+    <!-- Copy .addin manifest (from solution root) -->
+    <Copy
+      SourceFiles="$(ProjectDir)..\..\FoundationProjectionToggle.addin"
+      DestinationFolder="$(RevitAddinFolder)"
+      SkipUnchangedFiles="true" />
+
+    <Message Importance="high" Text="Deployment complete: $(RevitAddinFolder)" />
+  </Target>
+
+</Project>
