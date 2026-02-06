@@ -2,7 +2,7 @@
 
 A Revit add-in that lets you toggle the visibility of **Structural Foundation projection lines** with a single button click. No more digging through Visibility/Graphics overrides.
 
-Supports Revit **2022, 2023, and 2024**.
+Supports Revit **2022, 2023, 2024, and 2025**.
 
 ## Installation
 
