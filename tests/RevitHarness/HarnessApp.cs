@@ -49,11 +49,32 @@ namespace IBTools.RevitHarness
             }
             File.WriteAllText(Path.Combine(_job, "started.txt"), System.Diagnostics.Process.GetCurrentProcess().Id.ToString());
             application.Idling += OnIdling;
-            application.DialogBoxShowing += (s, e) => Log("Dialog: " + e.DialogId);
+            application.DialogBoxShowing += OnDialogBoxShowing;
             return Result.Succeeded;
         }
 
         public Result OnShutdown(UIControlledApplication application) => Result.Succeeded;
+
+        /// <summary>
+        /// Unattended run: "Ignore and continue" for unresolved links, OK for Revit warnings
+        /// (moving the base point and placing two points on one spot give warnings). The
+        /// add-in's own windows are WPF, not Revit dialogs, so ui-test.ps1 still sees them.
+        /// </summary>
+        private void OnDialogBoxShowing(object sender, DialogBoxShowingEventArgs e)
+        {
+            Log("Dialog: " + e.DialogId);
+            try
+            {
+                bool handled = e.DialogId == "TaskDialog_Unresolved_References"
+                    ? e.OverrideResult(1002)
+                    : e.OverrideResult(1); // IDOK
+                Log("   " + (handled ? "automatisch beantwoord" : "niet te beantwoorden"));
+            }
+            catch (Exception ex)
+            {
+                Log("   OverrideResult mislukt: " + ex.Message);
+            }
+        }
 
         private void OnIdling(object sender, IdlingEventArgs e)
         {
@@ -245,7 +266,9 @@ namespace IBTools.RevitHarness
                 bp.get_Parameter(BuiltInParameter.BASEPOINT_ELEVATION_PARAM).AsDouble());
             var pos = doc.ActiveProjectLocation.GetProjectPosition(corner);
             var target = new Vec3(pos.EastWest, pos.NorthSouth, pos.Elevation);
-            double angle = bp.get_Parameter(BuiltInParameter.BASEPOINT_ANGLETON_PARAM).AsDouble();
+            // Revit reports e.g. 350° for -10°; normalise so the sign comparison below means something.
+            double angle = RigidTransform.NormalizeDegrees(
+                bp.get_Parameter(BuiltInParameter.BASEPOINT_ANGLETON_PARAM).AsDouble() * 180.0 / Math.PI) * Math.PI / 180.0;
             foreach (var sign in new[] { 1.0, -1.0 })
             {
                 var dyn = SharedCoordinateMath.DynamoScriptInternal(bpInt, bpShared, target, sign * angle);
