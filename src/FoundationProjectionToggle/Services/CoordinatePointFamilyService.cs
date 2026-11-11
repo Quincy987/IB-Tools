@@ -45,7 +45,8 @@ namespace FoundationProjectionToggle.Services
                     return SortByScale(names);
                 }
             }
-            return FamilyPartAtomReader.ReadTypeNames(ReadEmbeddedRfa());
+            var fromFile = FamilyPartAtomReader.ReadTypeNames(ReadEmbeddedRfa());
+            return fromFile.Count > 0 ? fromFile : new List<string> { "Schaal 1op20" };
         }
 
         /// <summary>
