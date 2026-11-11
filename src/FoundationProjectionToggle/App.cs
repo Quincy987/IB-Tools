@@ -1,4 +1,5 @@
 using Autodesk.Revit.UI;
+using FoundationProjectionToggle.Availability;
 using FoundationProjectionToggle.Commands;
 using FoundationProjectionToggle.Infrastructure;
 using FoundationProjectionToggle.Services;
@@ -54,6 +55,9 @@ namespace FoundationProjectionToggle
                 // Create ribbon UI
                 _ribbonManager = new RibbonManager(visibility);
                 _ribbonManager.CreateRibbon(application);
+
+                // --- IB Tools buttons (one line each) ---
+                RibbonManager.AddPushButton<CreateIbWorksetsCommand>(application, "Model", "IbWorksets", "Worksets", "Zet worksharing aan (indien nodig) en maakt de IB-standaard worksets 01 t/m 06.", iconName: "worksets", availability: typeof(ProjectDocumentAvailability));
 
                 // Set references on command for access during execution
                 // This is a simple alternative to full DI container
