@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Test harness, see tests/RevitHarness/README.md. Inactive unless IBTOOLS_HARNESS_JOB is set. -->
+<RevitAddIns>
+  <AddIn Type="Application">
+    <Name>IB Tools test harness</Name>
+    <Assembly>IBTools.RevitHarness.dll</Assembly>
+    <AddInId>5B0F3C2E-8D7A-4E61-9C1B-2A7D4F0E9B13</AddInId>
+    <FullClassName>IBTools.RevitHarness.HarnessApp</FullClassName>
+    <VendorId>IBAMSTERDAM</VendorId>
+    <VendorDescription>Ingenieursbureau Gemeente Amsterdam</VendorDescription>
+  </AddIn>
+</RevitAddIns>

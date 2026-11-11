@@ -58,6 +58,9 @@ namespace FoundationProjectionToggle
 
                 // --- IB Tools buttons (one line each) ---
                 RibbonManager.AddPushButton<CreateIbWorksetsCommand>(application, "Model", "IbWorksets", "Worksets", "Zet worksharing aan (indien nodig) en maakt de IB-standaard worksets 01 t/m 06.", iconName: "worksets", availability: typeof(ProjectDocumentAvailability));
+                RibbonManager.AddPushButton<PlaceCoordinatePointCommand>(application, "Coördinaten", "CoordinatePoint", "Modelpunt",
+                    "Plaatst een coördinaatpunt op een RD-coördinaat en NAP-hoogte (via de gedeelde coördinaten van het project).",
+                    iconName: "coordpoint", availability: typeof(ProjectDocumentAvailability));
 
                 // Set references on command for access during execution
                 // This is a simple alternative to full DI container

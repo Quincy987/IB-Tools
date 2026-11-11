@@ -77,6 +77,8 @@
   -->
   <ItemGroup>
     <EmbeddedResource Include="UI\Resources\icons\*.png" />
+    <!-- Coordinate point family (Modelpunt op coördinaat), loaded from here, never from the network. -->
+    <EmbeddedResource Include="Resources\families\IB_GM_coordinaatpunt.rfa" LogicalName="FoundationProjectionToggle.Resources.families.IB_GM_coordinaatpunt.rfa" />
   </ItemGroup>
 
   <!--

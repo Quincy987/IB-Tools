@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Unit tests for the Revit-free parts of IB Tools (input parsing, coordinate arithmetic,
+    family type names). The tested files are compiled in directly (linked), so this project
+    needs no Revit and runs anywhere with:  dotnet test tests\IBTools.Tests
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace>IBTools.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\src\FoundationProjectionToggle\Services\CoordinateInputParser.cs" Link="Linked\CoordinateInputParser.cs" />
+    <Compile Include="..\..\src\FoundationProjectionToggle\Services\SharedCoordinateMath.cs" Link="Linked\SharedCoordinateMath.cs" />
+    <Compile Include="..\..\src\FoundationProjectionToggle\Services\FamilyPartAtomReader.cs" Link="Linked\FamilyPartAtomReader.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\src\FoundationProjectionToggle\Resources\families\IB_GM_coordinaatpunt.rfa" Link="TestData\IB_GM_coordinaatpunt.rfa" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>
