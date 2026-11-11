@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using System.Reflection;
 using System.Windows.Media.Imaging;
 using Autodesk.Revit.UI;
@@ -12,12 +11,13 @@ using FoundationProjectionToggle.Services;
 namespace FoundationProjectionToggle.UI
 {
     /// <summary>
-    /// Manages the Revit ribbon interface for the add-in.
+    /// Manages the "IB Tools" ribbon tab.
     ///
     /// <para>
     /// <b>Responsibilities:</b>
-    /// - Create ribbon tab and panel
-    /// - Create and configure toggle button
+    /// - Create the IB Tools tab and its panels (reuse them if they already exist)
+    /// - Shared helper <see cref="AddPushButton{TCommand}"/> for all IB buttons
+    /// - Create and configure the projection toggle button
     /// - Update button state when active view changes
     /// - Load and manage button icons
     /// </para>
@@ -31,46 +31,38 @@ namespace FoundationProjectionToggle.UI
     /// </summary>
     public class RibbonManager
     {
-        // Configuration constants - extracted for maintainability and potential future customization
-        // These could be moved to a config file or made settable via constructor for white-labeling
-        private const string RibbonPanelName = "Projectielijnen";
-        private const string ButtonInternalName = "ToggleProjection";
+        /// <summary>Name of the shared ribbon tab for all IB buttons.</summary>
+        public const string TabName = "IB Tools";
+
+        // Panel names. Add a constant here when a new panel is introduced.
+        public const string PanelWeergave = "Weergave";
+
+        private const string ToggleButtonName = "ToggleProjection";
 
         private readonly CategoryVisibilityService _visibilityService;
         private PushButton _toggleButton;
 
-        // Cached icons to avoid repeated loading
+        // Cached icons for the toggle states
         private BitmapImage _iconOnLarge;
         private BitmapImage _iconOnSmall;
         private BitmapImage _iconOffLarge;
         private BitmapImage _iconOffSmall;
 
-        /// <summary>
-        /// Creates a new RibbonManager instance.
-        /// </summary>
-        /// <param name="visibilityService">
-        /// Service for querying current visibility state.
-        /// </param>
         public RibbonManager(CategoryVisibilityService visibilityService)
         {
             _visibilityService = visibilityService ?? throw new ArgumentNullException(nameof(visibilityService));
         }
 
         /// <summary>
-        /// Creates the ribbon UI and registers event handlers.
+        /// Creates the "IB Tools" tab with all panels and buttons. Called once from App.OnStartup.
         /// </summary>
-        /// <param name="application">Revit UI controlled application.</param>
         /// <remarks>
-        /// <para>
-        /// <b>Called From:</b>
-        /// App.OnStartup() - once when Revit loads the add-in.
-        /// </para>
-        ///
-        /// <para>
-        /// <b>Tab/Panel Strategy:</b>
-        /// We add our panel to Revit's built-in "Add-Ins" tab for easy discoverability.
-        /// The panel "Projectielijnen" groups projection line visibility commands.
-        /// </para>
+        /// New buttons: add ONE line in the "IB Tools buttons" block below, e.g.
+        /// <code>
+        /// AddPushButton&lt;CreateIbWorksetsCommand&gt;(application, "Model", "IbWorksets",
+        ///     "IB-\nworksets", "Maakt de IB-standaard worksets aan.",
+        ///     iconName: "worksets", availability: typeof(ProjectDocumentAvailability));
+        /// </code>
         /// </remarks>
         public void CreateRibbon(UIControlledApplication application)
         {
@@ -78,77 +70,150 @@ namespace FoundationProjectionToggle.UI
 
             try
             {
-                // Load icons first (fail fast if resources are missing)
-                LoadIcons();
+                EnsureTab(application);
 
-                // Create panel on the built-in Add-Ins tab
-                // Using single-parameter CreateRibbonPanel places it on Add-Ins tab
-                RibbonPanel panel;
-                try
-                {
-                    panel = application.CreateRibbonPanel(RibbonPanelName);
-                    Logger.Info($"Created ribbon panel '{RibbonPanelName}' on Add-Ins tab");
-                }
-                catch (Autodesk.Revit.Exceptions.ArgumentException)
-                {
-                    // Panel already exists - find it
-                    panel = null;
-                    foreach (var p in application.GetRibbonPanels())
-                    {
-                        if (p.Name == RibbonPanelName)
-                        {
-                            panel = p;
-                            break;
-                        }
-                    }
-                    if (panel == null)
-                    {
-                        throw new InvalidOperationException($"Could not find or create panel: {RibbonPanelName}");
-                    }
-                    Logger.Info($"Found existing ribbon panel: {RibbonPanelName}");
-                }
-
-                // Create button (using class constant for internal name)
-                var assemblyPath = Assembly.GetExecutingAssembly().Location;
-                var buttonData = new PushButtonData(
-                    name: ButtonInternalName,
-                    text: "Hide", // Default text, will be updated
-                    assemblyName: assemblyPath,
-                    className: typeof(ToggleProjectionCommand).FullName
-                );
-
-                // Set availability controller
-                buttonData.AvailabilityClassName = typeof(ViewBasedAvailability).FullName;
-
-                // Set icons (default to "on" state)
-                buttonData.LargeImage = _iconOnLarge;
-                buttonData.Image = _iconOnSmall;
-
-                // Set tooltip
-                buttonData.ToolTip = "Toggle projection line visibility for Structural Foundations";
-                buttonData.LongDescription =
-                    "Toggles the visibility of projection lines (<Projection> subcategory) " +
-                    "for Structural Foundations in the current view.\n\n" +
-                    "This affects only the active view and can be undone with Ctrl+Z.";
-
-                // Add button to panel
-                _toggleButton = panel.AddItem(buttonData) as PushButton;
+                // --- Weergave: projectielijnen toggle (stateful: text/icon follow the active view) ---
+                LoadToggleIcons();
+                _toggleButton = AddPushButton<ToggleProjectionCommand>(
+                    application,
+                    PanelWeergave,
+                    ToggleButtonName,
+                    "Hide", // updated per view by UpdateButtonState
+                    "Toggle projection line visibility for Structural Foundations",
+                    availability: typeof(ViewBasedAvailability),
+                    longDescription:
+                        "Toggles the visibility of projection lines (<Projection> subcategory) " +
+                        "for Structural Foundations in the current view.\n\n" +
+                        "This affects only the active view and can be undone with Ctrl+Z.");
 
                 if (_toggleButton == null)
                 {
                     throw new InvalidOperationException("Failed to create toggle button");
                 }
+                _toggleButton.LargeImage = _iconOnLarge;
+                _toggleButton.Image = _iconOnSmall;
 
-                Logger.Info("Toggle button created successfully");
+                // --- IB Tools buttons: one AddPushButton line per button (see remarks) ---
 
-                // Register for view activation events to update button state
                 application.ViewActivated += OnViewActivated;
-                Logger.Info("Registered ViewActivated event handler");
+                Logger.Info("Ribbon created; ViewActivated handler registered");
             }
             catch (Exception ex)
             {
                 Logger.Error("Failed to create ribbon UI", ex);
-                throw; // Re-throw to fail add-in startup
+                throw; // fail add-in startup
+            }
+        }
+
+        /// <summary>
+        /// Creates the "IB Tools" tab, or reuses it if it already exists (e.g. created by
+        /// another IB add-in or a second load of this one).
+        /// </summary>
+        public static void EnsureTab(UIControlledApplication application)
+        {
+            try
+            {
+                application.CreateRibbonTab(TabName);
+                Logger.Info($"Created ribbon tab '{TabName}'");
+            }
+            catch (Autodesk.Revit.Exceptions.ArgumentException)
+            {
+                Logger.Info($"Ribbon tab '{TabName}' already exists, reusing it");
+            }
+        }
+
+        /// <summary>
+        /// Returns the panel <paramref name="panelName"/> on the IB Tools tab, creating it
+        /// (and the tab) if needed. Panels appear in the order they are first requested.
+        /// </summary>
+        public static RibbonPanel GetOrCreatePanel(UIControlledApplication application, string panelName)
+        {
+            EnsureTab(application);
+
+            foreach (var existing in application.GetRibbonPanels(TabName))
+            {
+                if (existing.Name == panelName)
+                {
+                    return existing;
+                }
+            }
+
+            var panel = application.CreateRibbonPanel(TabName, panelName);
+            Logger.Info($"Created ribbon panel '{panelName}' on tab '{TabName}'");
+            return panel;
+        }
+
+        /// <summary>
+        /// Adds a push button for command <typeparamref name="TCommand"/> to a named panel on
+        /// the IB Tools tab. Never throws: a failing button is logged and skipped (returns null),
+        /// so one broken button cannot take down the whole tab.
+        /// </summary>
+        /// <param name="application">Revit UI application (from OnStartup).</param>
+        /// <param name="panelName">Panel on the IB Tools tab, created if missing.</param>
+        /// <param name="internalName">Unique, stable id (Revit uses it for shortcuts); no spaces.</param>
+        /// <param name="text">Button label; use "\n" for a two-line label.</param>
+        /// <param name="toolTip">Short tooltip.</param>
+        /// <param name="iconName">
+        /// Base name of embedded icons: loads "{iconName}-32.png" and "{iconName}-16.png" from
+        /// UI\Resources\icons. Null or missing files: button without icon.
+        /// </param>
+        /// <param name="availability">
+        /// Optional IExternalCommandAvailability type, e.g. typeof(ProjectDocumentAvailability).
+        /// </param>
+        /// <param name="longDescription">Optional extended tooltip.</param>
+        public static PushButton AddPushButton<TCommand>(
+            UIControlledApplication application,
+            string panelName,
+            string internalName,
+            string text,
+            string toolTip,
+            string iconName = null,
+            Type availability = null,
+            string longDescription = null)
+            where TCommand : IExternalCommand
+        {
+            try
+            {
+                if (availability != null && !typeof(IExternalCommandAvailability).IsAssignableFrom(availability))
+                {
+                    throw new ArgumentException(
+                        $"{availability.FullName} does not implement IExternalCommandAvailability",
+                        nameof(availability));
+                }
+
+                var panel = GetOrCreatePanel(application, panelName);
+
+                var data = new PushButtonData(
+                    internalName,
+                    text,
+                    Assembly.GetExecutingAssembly().Location,
+                    typeof(TCommand).FullName)
+                {
+                    ToolTip = toolTip
+                };
+
+                if (!string.IsNullOrEmpty(longDescription))
+                {
+                    data.LongDescription = longDescription;
+                }
+                if (availability != null)
+                {
+                    data.AvailabilityClassName = availability.FullName;
+                }
+                if (!string.IsNullOrEmpty(iconName))
+                {
+                    data.LargeImage = IconLoader.Load(iconName + "-32.png");
+                    data.Image = IconLoader.Load(iconName + "-16.png");
+                }
+
+                var button = panel.AddItem(data) as PushButton;
+                Logger.Info($"Added button '{internalName}' to panel '{panelName}'");
+                return button;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Failed to add button '{internalName}' to panel '{panelName}'", ex);
+                return null;
             }
         }
 
@@ -231,78 +296,18 @@ namespace FoundationProjectionToggle.UI
             }
         }
 
-        /// <summary>
-        /// Loads button icons from embedded resources.
-        /// </summary>
-        /// <exception cref="InvalidOperationException">
-        /// Thrown if required icon resources are not found.
-        /// </exception>
-        private void LoadIcons()
+        private void LoadToggleIcons()
         {
-            Logger.Info("Loading button icons");
+            _iconOnLarge = IconLoader.Load("projection-on-32.png");
+            _iconOnSmall = IconLoader.Load("projection-on-16.png");
+            _iconOffLarge = IconLoader.Load("projection-off-32.png");
+            _iconOffSmall = IconLoader.Load("projection-off-16.png");
 
-            _iconOnLarge = LoadIcon("projection-on-32.png");
-            _iconOnSmall = LoadIcon("projection-on-16.png");
-            _iconOffLarge = LoadIcon("projection-off-32.png");
-            _iconOffSmall = LoadIcon("projection-off-16.png");
-
-            // Validate all icons loaded
             if (_iconOnLarge == null || _iconOnSmall == null ||
                 _iconOffLarge == null || _iconOffSmall == null)
             {
                 throw new InvalidOperationException(
-                    "Failed to load one or more button icons. " +
-                    "Ensure icon files are embedded resources."
-                );
-            }
-
-            Logger.Info("Button icons loaded successfully");
-        }
-
-        /// <summary>
-        /// Loads a single icon from embedded resources.
-        /// </summary>
-        /// <param name="fileName">The icon filename (e.g., "projection-on-32.png").</param>
-        /// <returns>BitmapImage for use in Revit ribbon, or null if not found.</returns>
-        private BitmapImage LoadIcon(string fileName)
-        {
-            try
-            {
-                var assembly = Assembly.GetExecutingAssembly();
-
-                // Resource name format: Namespace.Folder.Folder.Filename
-                // Our structure: FoundationProjectionToggle.UI.Resources.icons.filename.png
-                var resourceName = $"FoundationProjectionToggle.UI.Resources.icons.{fileName}";
-
-                using (var stream = assembly.GetManifestResourceStream(resourceName))
-                {
-                    if (stream == null)
-                    {
-                        Logger.Warn($"Icon resource not found: {resourceName}");
-
-                        // Log available resources for debugging
-                        var available = assembly.GetManifestResourceNames();
-                        Logger.Info($"Available resources: {string.Join(", ", available)}");
-
-                        return null;
-                    }
-
-                    // Load into BitmapImage
-                    var image = new BitmapImage();
-                    image.BeginInit();
-                    image.StreamSource = stream;
-                    image.CacheOption = BitmapCacheOption.OnLoad; // Load immediately, close stream
-                    image.EndInit();
-                    image.Freeze(); // Make thread-safe
-
-                    Logger.Info($"Loaded icon: {fileName}");
-                    return image;
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"Failed to load icon: {fileName}", ex);
-                return null;
+                    "Failed to load one or more toggle icons. Ensure icon files are embedded resources.");
             }
         }
 

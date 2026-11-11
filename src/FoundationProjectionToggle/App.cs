@@ -7,7 +7,7 @@ using FoundationProjectionToggle.UI;
 namespace FoundationProjectionToggle
 {
     /// <summary>
-    /// Main entry point for the Revit add-in.
+    /// Main entry point for the IB Tools Revit add-in (assembly FoundationProjectionToggle).
     ///
     /// <para>
     /// <b>Lifecycle:</b>
@@ -40,7 +40,7 @@ namespace FoundationProjectionToggle
         public Result OnStartup(UIControlledApplication application)
         {
             Logger.Info("========================================");
-            Logger.Info("FoundationProjectionToggle OnStartup");
+            Logger.Info("IB Tools (FoundationProjectionToggle) OnStartup");
             Logger.Info($"Revit version: {application.ControlledApplication.VersionNumber}");
             Logger.Info($"Add-in version: {typeof(App).Assembly.GetName().Version}");
             Logger.Info("========================================");
@@ -79,7 +79,7 @@ namespace FoundationProjectionToggle
         /// <returns>Always returns Succeeded.</returns>
         public Result OnShutdown(UIControlledApplication application)
         {
-            Logger.Info("FoundationProjectionToggle OnShutdown");
+            Logger.Info("IB Tools (FoundationProjectionToggle) OnShutdown");
 
             try
             {

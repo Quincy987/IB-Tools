@@ -32,3 +32,6 @@ Thumbs.db
 # Test results
 TestResults/
 *.trx
+
+# Local Revit verification output (screenshots)
+.verify/

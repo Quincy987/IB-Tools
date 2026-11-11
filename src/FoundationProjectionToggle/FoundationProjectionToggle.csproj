@@ -1,175 +1,93 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    MULTI-VERSION BUILD CONFIGURATION
-    =================================
-    This project supports Revit 2022-2025 via the RevitVersion property.
+    IB TOOLS (assembly name still FoundationProjectionToggle, see README "Hernoemen")
+    ================================================================================
+    One project, one RevitVersion per build:
 
-    Build commands:
-      dotnet build -c Release -p:RevitVersion=2022
-      dotnet build -c Release -p:RevitVersion=2023  (default)
-      dotnet build -c Release -p:RevitVersion=2024
-      dotnet build -c Release -p:RevitVersion=2025
+      dotnet build -c Release -p:RevitVersion=2023   (default)  -> net48
+      dotnet build -c Release -p:RevitVersion=2024              -> net48
+      dotnet build -c Release -p:RevitVersion=2025              -> net8.0-windows
 
-    The SDK version is automatically matched to the Revit version.
-    Output deploys to the correct Addins folder automatically.
+    A plain `dotnet build` only compiles. Deploying to the Revit Addins folder is done by
+    build.ps1 (which respects other Revit sessions on this machine), or opt-in here with
+    -p:Deploy=true.
+
+    Conditional compilation: REVIT2022 / REVIT2023 / REVIT2024 / REVIT2025 are defined per
+    build, plus REVIT2025_OR_GREATER for the .NET 8 line.
   -->
 
   <PropertyGroup>
-    <!-- Default to Revit 2023 if not specified -->
     <RevitVersion Condition="'$(RevitVersion)'==''">2023</RevitVersion>
 
-    <!--
-      TARGET FRAMEWORK
-      Revit 2022-2024: .NET Framework 4.8
-      Revit 2025+: .NET 8 (handled separately, see note below)
+    <!-- Revit 2022-2024 run on .NET Framework 4.8, Revit 2025+ on .NET 8. -->
+    <TargetFramework Condition="'$(RevitVersion)'&lt;'2025'">net48</TargetFramework>
+    <TargetFramework Condition="'$(RevitVersion)'&gt;='2025'">net8.0-windows</TargetFramework>
 
-      NOTE: Revit 2025 migration to .NET 8 may require this project
-      to be split or use multi-targeting. For now, we target 4.8 for
-      2022-2024 which covers ~90% of users. 2025 support is roadmap item.
-    -->
-    <TargetFramework>net48</TargetFramework>
+    <!-- WPF (XAML windows) for both frameworks. -->
+    <UseWPF>true</UseWPF>
 
     <!-- Revit is 64-bit only -->
     <PlatformTarget>x64</PlatformTarget>
     <Platforms>x64</Platforms>
 
-    <!-- Assembly configuration -->
     <AssemblyName>FoundationProjectionToggle</AssemblyName>
     <RootNamespace>FoundationProjectionToggle</RootNamespace>
-    <Version>1.0.0</Version>
-    <Authors>Witteveen+Bos</Authors>
-    <Company>Witteveen+Bos</Company>
-    <Description>Toggle projection line visibility for Structural Foundations</Description>
+    <Version>1.1.0</Version>
+    <Product>IB Tools</Product>
+    <AssemblyTitle>IB Tools for Revit</AssemblyTitle>
+    <Authors>Ingenieursbureau Gemeente Amsterdam</Authors>
+    <Company>Ingenieursbureau Gemeente Amsterdam</Company>
+    <Copyright>Ingenieursbureau Gemeente Amsterdam</Copyright>
+    <Description>IB Tools: Revit-knoppen van het Ingenieursbureau Amsterdam</Description>
 
-    <!--
-      OUTPUT CONFIGURATION
-      Build output goes to version-specific folder for organization.
-      This prevents version conflicts during development.
-    -->
     <OutputPath>bin\$(Configuration)\Revit$(RevitVersion)\</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
 
-    <!-- Disable features not needed/supported -->
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <!-- .NET 8: Revit provides its own runtime; no deps.json/runtimeconfig needed next to the dll. -->
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <EnableDynamicLoading Condition="'$(TargetFramework)'=='net8.0-windows'">true</EnableDynamicLoading>
 
-    <!--
-      REVIT ADDINS DEPLOYMENT PATH
-      Standard Autodesk path for current user installation.
-      For all-users deployment, use ProgramData instead of AppData.
-    -->
+    <!-- The Revit SDK package ships native DLLs (RevitDB, RevitMFC...) in ref/: harmless "bad image" warnings. -->
+    <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);MSB3246</MSBuildWarningsAsMessages>
+
+    <DefineConstants>$(DefineConstants);REVIT$(RevitVersion)</DefineConstants>
+    <DefineConstants Condition="'$(RevitVersion)'&gt;='2025'">$(DefineConstants);REVIT2025_OR_GREATER</DefineConstants>
+
     <RevitAddinFolder>$(APPDATA)\Autodesk\Revit\Addins\$(RevitVersion)</RevitAddinFolder>
   </PropertyGroup>
 
   <!--
-    REVIT SDK REFERENCES
-    ====================
-    Each Revit version requires its specific SDK version.
-    The SDK provides: RevitAPI.dll, RevitAPIUI.dll, AdWindows.dll
-
-    IMPORTANT: These are compile-time references only.
-    At runtime, Revit provides its own copies of these assemblies.
-    Setting Private=False prevents copying to output (which would fail to load).
-  -->
-
-  <ItemGroup Condition="'$(RevitVersion)'=='2022'">
-    <PackageReference Include="Autodesk.Revit.SDK" Version="2022.*">
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(RevitVersion)'=='2023'">
-    <PackageReference Include="Autodesk.Revit.SDK" Version="2023.*">
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(RevitVersion)'=='2024'">
-    <PackageReference Include="Autodesk.Revit.SDK" Version="2024.*">
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-  </ItemGroup>
-
-  <!--
-    REVIT 2025 NOTE
-    ===============
-    Revit 2025 uses .NET 8 which is a breaking change from .NET Framework 4.8.
-    Full support requires multi-targeting or a separate project.
-    This is tracked as a v2.0 roadmap item.
-
-    For now, attempting to build for 2025 with this project will work but
-    the runtime behavior is undefined. Users should wait for v2.0.
-  -->
-  <ItemGroup Condition="'$(RevitVersion)'=='2025'">
-    <PackageReference Include="Autodesk.Revit.SDK" Version="2025.*">
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-  </ItemGroup>
-
-  <!--
-    WPF REFERENCES
-    ==============
-    Required for BitmapImage (button icons) and other UI elements.
-    These are part of .NET Framework, no package reference needed.
+    REVIT SDK REFERENCES (compile-time only; Revit provides the real assemblies at runtime).
   -->
   <ItemGroup>
-    <Reference Include="PresentationCore" />
-    <Reference Include="PresentationFramework" />
-    <Reference Include="WindowsBase" />
-    <Reference Include="System.Xaml" />
+    <PackageReference Include="Autodesk.Revit.SDK" Version="$(RevitVersion).*">
+      <PrivateAssets>all</PrivateAssets>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
   </ItemGroup>
 
   <!--
     EMBEDDED RESOURCES
-    ==================
-    Icons are embedded in the DLL as resources.
-    This enables single-file deployment (just DLL + .addin manifest).
-
-    Resource naming convention:
-      {RootNamespace}.{FolderPath.With.Dots}.{Filename}
-      Example: FoundationProjectionToggle.UI.Resources.icons.projection-on-32.png
+    Icons: {RootNamespace}.UI.Resources.icons.{name}-32.png / -16.png
+    (load with IconLoader.Load("name-32.png") or via RibbonManager.AddPushButton iconName "name").
   -->
   <ItemGroup>
     <EmbeddedResource Include="UI\Resources\icons\*.png" />
   </ItemGroup>
 
   <!--
-    POST-BUILD DEPLOYMENT
-    =====================
-    Automatically copies build output to Revit Addins folder.
-
-    This runs after every successful build, enabling rapid iteration:
-    1. Make code change
-    2. Build (Ctrl+Shift+B)
-    3. Start Revit (or use Revit API hotload if enabled)
-    4. Test
-
-    Files deployed:
-    - FoundationProjectionToggle.dll (the add-in assembly)
-    - FoundationProjectionToggle.addin (manifest file)
-
-    NOTE: Revit must be closed to overwrite files, or use hotload add-in.
+    OPT-IN DEPLOYMENT (-p:Deploy=true). build.ps1 does its own, lock-aware deployment and
+    does not use this target.
   -->
-  <Target Name="DeployAddin" AfterTargets="Build" Condition="'$(Configuration)'=='Release' Or '$(Configuration)'=='Debug'">
+  <Target Name="DeployAddin" AfterTargets="Build" Condition="'$(Deploy)'=='true'">
     <Message Importance="high" Text="Deploying to Revit $(RevitVersion) Addins folder..." />
-
-    <!-- Create target folder if it doesn't exist -->
     <MakeDir Directories="$(RevitAddinFolder)" Condition="!Exists('$(RevitAddinFolder)')" />
-
-    <!-- Copy DLL -->
-    <Copy
-      SourceFiles="$(TargetPath)"
-      DestinationFolder="$(RevitAddinFolder)"
-      SkipUnchangedFiles="true" />
-
-    <!-- Copy .addin manifest (from solution root) -->
-    <Copy
-      SourceFiles="$(ProjectDir)..\..\FoundationProjectionToggle.addin"
-      DestinationFolder="$(RevitAddinFolder)"
-      SkipUnchangedFiles="true" />
-
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(RevitAddinFolder)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(ProjectDir)..\..\FoundationProjectionToggle.addin" DestinationFolder="$(RevitAddinFolder)" SkipUnchangedFiles="true" />
     <Message Importance="high" Text="Deployment complete: $(RevitAddinFolder)" />
   </Target>
 

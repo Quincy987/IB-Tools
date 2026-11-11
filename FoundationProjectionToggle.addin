@@ -10,6 +10,10 @@
   The post-build script copies this file automatically.
 
   GUID USAGE:
+  IB TOOLS: this manifest still has the original file name and ClientId on purpose.
+  Renaming the .addin/.dll or changing the ClientId is a separate step: an old manifest with
+  the same ClientId left in the Addins folder would otherwise load the add-in twice.
+
   The ClientId GUID uniquely identifies this add-in across all Revit installations.
   - NEVER change this GUID after release (breaks user settings)
   - NEVER reuse from another add-in (causes conflicts)
@@ -24,8 +28,8 @@
     -->
     <ClientId>7F3E8A2B-9C4D-4E5F-B6A7-8C9D0E1F2A3B</ClientId>
 
-    <!-- Display name in Revit Add-Ins tab and About dialog -->
-    <Name>Foundation Projection Toggle</Name>
+    <!-- Display name (Add-Ins manager, security prompt) -->
+    <Name>IB Tools</Name>
 
     <!--
       ASSEMBLY PATH
@@ -42,7 +46,7 @@
     <FullClassName>FoundationProjectionToggle.App</FullClassName>
 
     <!-- Vendor identification for support and licensing -->
-    <VendorId>WITTEVEENBOS</VendorId>
-    <VendorDescription>Witteveen+Bos, https://www.witteveenbos.com</VendorDescription>
+    <VendorId>IBAMSTERDAM</VendorId>
+    <VendorDescription>Ingenieursbureau Gemeente Amsterdam</VendorDescription>
   </AddIn>
 </RevitAddIns>
