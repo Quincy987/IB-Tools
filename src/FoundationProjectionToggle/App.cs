@@ -54,6 +54,7 @@ namespace FoundationProjectionToggle
                 // Create ribbon UI
                 _ribbonManager = new RibbonManager(visibility);
                 _ribbonManager.CreateRibbon(application);
+                RibbonManager.AddPushButton<WritePileCoordinatesCommand>(application, "Coördinaten", "PileCoordinates", "Paalcoördinaten", "Schrijft de RD-coördinaten (m, 3 decimalen) van elke paal in X-/Y-coördinaat_funderingspaal. Selectie: alleen die palen, anders het hele model.", iconName: "pilecoords", availability: typeof(Availability.ProjectDocumentAvailability));
 
                 // Set references on command for access during execution
                 // This is a simple alternative to full DI container
