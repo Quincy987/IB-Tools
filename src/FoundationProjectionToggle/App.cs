@@ -55,6 +55,7 @@ namespace FoundationProjectionToggle
                 // Create ribbon UI
                 _ribbonManager = new RibbonManager(visibility);
                 _ribbonManager.CreateRibbon(application);
+                RibbonManager.AddPushButton<WritePileCoordinatesCommand>(application, "Coördinaten", "PileCoordinates", "Paalcoördinaten", "Schrijft de RD-coördinaten (m, 3 decimalen) van elke paal in X-/Y-coördinaat_funderingspaal. Selectie: alleen die palen, anders het hele model.", iconName: "pilecoords", availability: typeof(Availability.ProjectDocumentAvailability));
 
                 // --- IB Tools buttons (one line each) ---
                 RibbonManager.AddPushButton<CreateIbWorksetsCommand>(application, "Model", "IbWorksets", "Worksets", "Zet worksharing aan (indien nodig) en maakt de IB-standaard worksets 01 t/m 06.", iconName: "worksets", availability: typeof(ProjectDocumentAvailability));
