@@ -1,4 +1,5 @@
 using Autodesk.Revit.UI;
+using FoundationProjectionToggle.Availability;
 using FoundationProjectionToggle.Commands;
 using FoundationProjectionToggle.Infrastructure;
 using FoundationProjectionToggle.Services;
@@ -54,6 +55,11 @@ namespace FoundationProjectionToggle
                 // Create ribbon UI
                 _ribbonManager = new RibbonManager(visibility);
                 _ribbonManager.CreateRibbon(application);
+
+                // --- IB Tools buttons (one line each) ---
+                RibbonManager.AddPushButton<PlaceCoordinatePointCommand>(application, "Coördinaten", "CoordinatePoint", "Modelpunt",
+                    "Plaatst een coördinaatpunt op een RD-coördinaat en NAP-hoogte (via de gedeelde coördinaten van het project).",
+                    iconName: "coordpoint", availability: typeof(ProjectDocumentAvailability));
 
                 // Set references on command for access during execution
                 // This is a simple alternative to full DI container
