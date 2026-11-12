@@ -15,7 +15,8 @@ namespace IBTools.RevitHarness
 {
     /// <summary>
     /// Revit integration test for "Modelpunt op coördinaat" (see README.md). Runs only when
-    /// IBTOOLS_HARNESS_JOB is set; writes its findings to that folder.
+    /// IBTOOLS_HARNESS_JOB is set; writes its findings to that folder. A job folder with a file
+    /// remmingwerk.txt runs <see cref="RemmingwerkHarness"/> instead.
     /// </summary>
     /// <remarks>
     /// Stage 0 (first idle with a document): on the opened model copy
@@ -48,7 +49,15 @@ namespace IBTools.RevitHarness
                 return Result.Succeeded; // inactive in every other Revit
             }
             File.WriteAllText(Path.Combine(_job, "started.txt"), System.Diagnostics.Process.GetCurrentProcess().Id.ToString());
-            application.Idling += OnIdling;
+            if (File.Exists(Path.Combine(_job, "remmingwerk.txt")))
+            {
+                // Remmingwerk job (see RemmingwerkHarness); the dialog handling below is shared.
+                application.Idling += new RemmingwerkHarness(_job).OnIdling;
+            }
+            else
+            {
+                application.Idling += OnIdling;
+            }
             application.DialogBoxShowing += OnDialogBoxShowing;
             return Result.Succeeded;
         }

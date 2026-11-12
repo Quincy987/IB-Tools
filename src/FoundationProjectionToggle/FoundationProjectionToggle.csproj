@@ -79,6 +79,10 @@
     <EmbeddedResource Include="UI\Resources\icons\*.png" />
     <!-- Coordinate point family (Modelpunt op coördinaat), loaded from here, never from the network. -->
     <EmbeddedResource Include="Resources\families\IB_GM_coordinaatpunt.rfa" LogicalName="FoundationProjectionToggle.Resources.families.IB_GM_coordinaatpunt.rfa" />
+    <!-- Remmingwerk: timber wrijfgording (Structural Framing) and wrijfstijl (Generic Model), copies of
+         K:\ALG\Autodesk\2023\REVIT\Revit bibliotheek\Kademuren\ (2023-04-28). -->
+    <EmbeddedResource Include="Resources\families\SB_wrijfgording.rfa" LogicalName="FoundationProjectionToggle.Resources.families.SB_wrijfgording.rfa" />
+    <EmbeddedResource Include="Resources\families\SC_wrijfstijl_generic model.rfa" LogicalName="FoundationProjectionToggle.Resources.families.SC_wrijfstijl_generic model.rfa" />
   </ItemGroup>
 
   <!--
