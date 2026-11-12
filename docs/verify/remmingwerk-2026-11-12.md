@@ -65,6 +65,6 @@ gordingen; die variant is bewust niet gebouwd (keuze: één stuk zoals het scrip
 
 ## Unit-tests
 
-`dotnet test tests\FoundationProjectionToggle.Core.Tests`: 61 geslaagd (waarvan 28 nieuw voor
+`dotnet test tests\FoundationProjectionToggle.Core.Tests`: 62 geslaagd (waarvan 29 nieuw voor
 Remmingwerk). `dotnet test tests\IBTools.Tests`: 45 geslaagd. `.\build.ps1 -NoDeploy` voor Revit
 2022, 2023, 2024 en 2025: 0 waarschuwingen.

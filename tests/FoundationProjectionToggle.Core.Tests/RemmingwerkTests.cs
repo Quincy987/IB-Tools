@@ -329,6 +329,19 @@ namespace FoundationProjectionToggle.Core.Tests
             Assert.Equal(10, plan.Count(RemmingwerkPart.Buispaal));
             Assert.Equal(6, plan.Count(RemmingwerkPart.Wrijfgording));
             Assert.Equal(2, plan.Lines.Count);
+            Assert.StartsWith("10 palen à 21,8 m;", plan.Overview());
+        }
+
+        [Fact]
+        public void Overview_shows_the_range_of_pile_lengths_for_lines_at_different_heights()
+        {
+            var lines = new List<RemmingwerkLine>
+            {
+                new RemmingwerkLine(new PlanLine(new Pt2(0, 0), new Pt2(20000, 0)), 0, "1"),
+                new RemmingwerkLine(new PlanLine(new Pt2(0, 10000), new Pt2(20000, 10000)), 1000, "2"),
+            };
+            var plan = RemmingwerkPlanner.Plan(lines, new RemmingwerkSettings(), Hea450AndTube610(), 0);
+            Assert.StartsWith("10 palen à 21,8 – 22,8 m;", plan.Overview());
         }
 
         [Fact]

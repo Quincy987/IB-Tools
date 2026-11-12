@@ -113,9 +113,13 @@ namespace FoundationProjectionToggle.Services
             return symbol;
         }
 
-        /// <summary>Value in mm of the first type parameter whose name starts with <paramref name="prefix"/> (Dynamo: IndexOf == 0); NaN if none.</summary>
+        /// <summary>
+        /// Value in mm of the type parameter named <paramref name="prefix"/>, else of the first one
+        /// whose name starts with it (Dynamo: IndexOf == 0); NaN if none.
+        /// </summary>
         public static double ReadTypeMm(Element type, string prefix)
         {
+            double firstPrefixMatch = double.NaN;
             foreach (Parameter p in type.Parameters)
             {
                 var name = p.Definition?.Name;
@@ -123,16 +127,34 @@ namespace FoundationProjectionToggle.Services
                 {
                     continue;
                 }
-                if (p.StorageType == StorageType.Double)
+                double value = ValueMm(p);
+                if (double.IsNaN(value))
                 {
-                    bool isLength = false;
-                    try { isLength = p.Definition.GetDataType() == SpecTypeId.Length; } catch { }
-                    return isLength ? UnitUtils.ConvertFromInternalUnits(p.AsDouble(), UnitTypeId.Millimeters) : p.AsDouble();
+                    continue;
                 }
-                if (p.StorageType == StorageType.Integer)
+                if (name.Length == prefix.Length)
                 {
-                    return p.AsInteger();
+                    return value; // exact name wins
                 }
+                if (double.IsNaN(firstPrefixMatch))
+                {
+                    firstPrefixMatch = value;
+                }
+            }
+            return firstPrefixMatch;
+        }
+
+        private static double ValueMm(Parameter p)
+        {
+            if (p.StorageType == StorageType.Double)
+            {
+                bool isLength = false;
+                try { isLength = p.Definition.GetDataType() == SpecTypeId.Length; } catch { }
+                return isLength ? UnitUtils.ConvertFromInternalUnits(p.AsDouble(), UnitTypeId.Millimeters) : p.AsDouble();
+            }
+            if (p.StorageType == StorageType.Integer)
+            {
+                return p.AsInteger();
             }
             return double.NaN;
         }

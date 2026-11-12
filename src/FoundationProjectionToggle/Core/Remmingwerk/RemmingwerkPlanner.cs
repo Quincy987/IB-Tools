@@ -128,7 +128,15 @@ namespace FoundationProjectionToggle.Core.Remmingwerk
             sb.Append(piles.Count).Append(piles.Count == 1 ? " paal" : " palen");
             if (piles.Count > 0)
             {
-                sb.Append(" à ").Append(RemmingwerkFormat.MetresShort(piles[0].LengthMm)).Append(" m");
+                // Lines at different heights give different pile lengths: show the range.
+                double shortest = piles.Min(p => p.LengthMm);
+                double longest = piles.Max(p => p.LengthMm);
+                var len = RemmingwerkFormat.MetresShort(shortest);
+                if (RemmingwerkFormat.MetresShort(longest) != len)
+                {
+                    len += " – " + RemmingwerkFormat.MetresShort(longest);
+                }
+                sb.Append(" à ").Append(len).Append(" m");
             }
             if (Lines.Count == 1)
             {
