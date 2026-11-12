@@ -14,6 +14,22 @@ namespace FoundationProjectionToggle.Core.Remmingwerk
         Wrijfstijl,
     }
 
+    public static class RemmingwerkParts
+    {
+        /// <summary>Dutch name for messages and reports.</summary>
+        public static string Name(RemmingwerkPart part)
+        {
+            switch (part)
+            {
+                case RemmingwerkPart.Wrijfgording: return "Wrijfgording";
+                case RemmingwerkPart.StalenGording: return "Stalen gording";
+                case RemmingwerkPart.StalenStijl: return "Stalen stijl";
+                case RemmingwerkPart.Buispaal: return "Buispaal";
+                default: return "Wrijfstijl";
+            }
+        }
+    }
+
     /// <summary>A beam (wrijfgording or steel gording) along a plan curve at height ZMm.</summary>
     public sealed class PlannedBeam
     {
@@ -223,6 +239,13 @@ namespace FoundationProjectionToggle.Core.Remmingwerk
                     continue;
                 }
 
+                if (pileBottom >= z0 + pileTopAbove)
+                {
+                    plan.Errors.Add(name + ": de paalpunt (" + RemmingwerkFormat.Metres(settings.PileTipNapMm) +
+                                    " m t.o.v. NAP) ligt niet onder de bovenkant van de paal.");
+                    continue;
+                }
+
                 for (int k = 0; k < settings.Rows; k++)
                 {
                     double z = z0 + k * settings.RowSpacingMm;
@@ -247,13 +270,6 @@ namespace FoundationProjectionToggle.Core.Remmingwerk
                         ZMm = z,
                         CrossSectionRotationDegrees = CrossSectionStalenGording,
                     });
-                }
-
-                if (pileBottom >= z0 + pileTopAbove)
-                {
-                    plan.Errors.Add(name + ": de paalpunt (" + RemmingwerkFormat.Metres(settings.PileTipNapMm) +
-                                    " m t.o.v. NAP) ligt niet onder de bovenkant van de paal.");
-                    continue;
                 }
 
                 var stations = Stations(curve.Length, settings.PileSpacingMm);
@@ -343,6 +359,10 @@ namespace FoundationProjectionToggle.Core.Remmingwerk
             Positive(s.WrijfBreedteMm, "breedte wrijfgording", plan);
             Positive(s.WrijfHoogteMm, "hoogte wrijfgording", plan);
             Positive(s.PileSpacingMm, "h.o.h. buispalen", plan);
+            if (double.IsNaN(s.PileTipNapMm) || double.IsInfinity(s.PileTipNapMm))
+            {
+                plan.Errors.Add("O.k. buispaal is geen getal.");
+            }
             if (s.PileOverlengthMm < 0 || double.IsNaN(s.PileOverlengthMm))
             {
                 plan.Errors.Add("Overlengte buispaal mag niet negatief zijn.");

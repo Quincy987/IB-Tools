@@ -42,8 +42,9 @@ $env:IBTOOLS_LOCK_OWNER = "<threadnaam>"
 
 Wat het controleert (`%LOCALAPPDATA%\IBTools\test\remmingwerk\job\results.txt`, regels `OK`/`FOUT`):
 
-- F. zonder staaltypen weigert de knop vóór het venster (3 ontbrekende typen gemeld); daarna worden
-  HEA450-balk, HEA450-kolom en buis ø610x12.5 uit `job\staal` geladen;
+- F. zonder staaltypen meldt de knop vóór het venster de 3 ontbrekende typen met hun K:-pad. Heeft het
+  model ze al, dan haalt het harnas ze tijdelijk weg (transactie wordt teruggedraaid); heeft het ze
+  niet, dan laadt het daarna HEA450-balk, HEA450-kolom en buis ø610x12.5 uit `job\staal`;
 - A recht 20 m, B 17 m (palen op de einden), C 20 m andersom getekend, D boog R 30 m (radiaal),
   E 3 m (1 paal + waarschuwing), G palen links: posities tegen onafhankelijk uitgeschreven
   verwachtingen (≤ 1 mm), hoogtes t.o.v. NAP, Cross-Section Rotation, z Justification en de

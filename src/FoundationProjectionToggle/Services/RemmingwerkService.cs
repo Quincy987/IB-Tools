@@ -42,13 +42,7 @@ namespace FoundationProjectionToggle.Services
 
         public SteelDimensions Steel()
         {
-            return new SteelDimensions
-            {
-                GordingHoogteMm = StalenGording != null ? StalenGording.HoogteMm : double.NaN,
-                GordingBreedteMm = StalenGording != null ? StalenGording.BreedteMm : double.NaN,
-                StijlHoogteMm = StalenStijl != null ? StalenStijl.HoogteMm : double.NaN,
-                PaalDiameterMm = Buispaal != null ? Buispaal.DiameterMm : double.NaN,
-            };
+            return SteelDimensions.FromTypes(StalenGording, StalenStijl, Buispaal);
         }
     }
 
@@ -286,7 +280,7 @@ namespace FoundationProjectionToggle.Services
                     {
                         double d = BeamDeviationMm(pb.Item2, pb.Item1);
                         maxDev = Math.Max(maxDev, d);
-                        if (d > ToleranceMm) deviations.Add($"{PartName(pb.Item1.Part)} rij {pb.Item1.Row + 1} ({pb.Item2.Id}): {d:0.000} mm");
+                        if (d > ToleranceMm) deviations.Add($"{RemmingwerkParts.Name(pb.Item1.Part)} rij {pb.Item1.Row + 1} ({pb.Item2.Id}): {d:0.000} mm");
                     }
                     foreach (var pc in placedColumns)
                     {
@@ -294,7 +288,7 @@ namespace FoundationProjectionToggle.Services
                         double d = ColumnDeviationMm(doc, pc.Item2, pc.Item1, out rot);
                         maxDev = Math.Max(maxDev, d);
                         maxRot = Math.Max(maxRot, rot);
-                        if (d > ToleranceMm || rot > RotationToleranceDeg) deviations.Add($"{PartName(pc.Item1.Part)} {pc.Item1.Index + 1} ({pc.Item2.Id}): {d:0.000} mm, draaiing {rot:0.000}°");
+                        if (d > ToleranceMm || rot > RotationToleranceDeg) deviations.Add($"{RemmingwerkParts.Name(pc.Item1.Part)} {pc.Item1.Index + 1} ({pc.Item2.Id}): {d:0.000} mm, draaiing {rot:0.000}°");
                     }
                     foreach (var pp in placedPosts)
                     {
@@ -316,19 +310,19 @@ namespace FoundationProjectionToggle.Services
                         t.RollBack();
                         return RemmingwerkResult.Fail(
                             $"{deviations.Count} elementen kwamen meer dan {ToleranceMm:0} mm (of {RotationToleranceDeg}°) naast de berekende plek. Niets geplaatst.",
-                            BuildReport(req, plan, level, levelZ, result, placedColumns, notes, failures, deviations), plan);
+                            BuildReport(req, plan, level, levelZ, result, placedColumns, notes, failures, deviations, false), plan);
                     }
 
                     var status = t.Commit();
                     if (status != TransactionStatus.Committed || failures.Errors.Count > 0)
                     {
                         return RemmingwerkResult.Fail("Revit heeft het plaatsen geweigerd: " + string.Join(" ", failures.Errors.Distinct()),
-                            BuildReport(req, plan, level, levelZ, result, placedColumns, notes, failures, deviations), plan);
+                            BuildReport(req, plan, level, levelZ, result, placedColumns, notes, failures, deviations, false), plan);
                     }
 
                     result.Succeeded = true;
                     result.Summary = Summary(plan, result);
-                    result.Report = BuildReport(req, plan, level, levelZ, result, placedColumns, notes, failures, deviations);
+                    result.Report = BuildReport(req, plan, level, levelZ, result, placedColumns, notes, failures, deviations, true);
                     Logger.Info($"Remmingwerk placed: {result.Created.Count} elements, max deviation {maxDev:0.000} mm, max rotation {maxRot:0.000}°");
                     return result;
                 }
@@ -555,28 +549,16 @@ namespace FoundationProjectionToggle.Services
             list.Add(id);
         }
 
-        public static string PartName(RemmingwerkPart part)
-        {
-            switch (part)
-            {
-                case RemmingwerkPart.Wrijfgording: return "Wrijfgording";
-                case RemmingwerkPart.StalenGording: return "Stalen gording";
-                case RemmingwerkPart.StalenStijl: return "Stalen stijl";
-                case RemmingwerkPart.Buispaal: return "Buispaal";
-                default: return "Wrijfstijl";
-            }
-        }
-
         private static string Summary(RemmingwerkPlan plan, RemmingwerkResult r)
         {
-            return string.Format(CultureInfo.InvariantCulture,
+            return string.Format(RemmingwerkFormat.Culture,
                 "Remmingwerk geplaatst: {0} buispalen, {1} stalen stijlen, {2} wrijfstijlen, {3} wrijfgordingen en {4} stalen gordingen ({5} elementen, afwijking max {6:0.000} mm). Ctrl+Z maakt alles in één keer ongedaan.",
                 plan.Count(RemmingwerkPart.Buispaal), plan.Count(RemmingwerkPart.StalenStijl), plan.Count(RemmingwerkPart.Wrijfstijl),
                 plan.Count(RemmingwerkPart.Wrijfgording), plan.Count(RemmingwerkPart.StalenGording), r.Created.Count, r.MaxDeviationMm);
         }
 
         private static string BuildReport(RemmingwerkRequest req, RemmingwerkPlan plan, Level level, double levelZ, RemmingwerkResult r,
-            List<Tuple<PlannedColumn, FamilyInstance>> columns, IList<string> notes, FailureCollector failures, IList<string> deviations)
+            List<Tuple<PlannedColumn, FamilyInstance>> columns, IList<string> notes, FailureCollector failures, IList<string> deviations, bool placed)
         {
             var s = req.Settings;
             var sb = new StringBuilder();
@@ -607,7 +589,10 @@ namespace FoundationProjectionToggle.Services
             {
                 List<ElementId> ids;
                 if (!r.ByPart.TryGetValue(part, out ids)) continue;
-                sb.AppendLine(string.Format("{0} ({1}): {2}", PartName(part), ids.Count, string.Join(", ", ids.Select(i => i.ToString()))));
+                // Element ids only mean something when the elements were kept.
+                sb.AppendLine(placed
+                    ? string.Format("{0} ({1}): {2}", RemmingwerkParts.Name(part), ids.Count, string.Join(", ", ids.Select(i => i.ToString())))
+                    : string.Format("{0}: {1} berekend, niet geplaatst", RemmingwerkParts.Name(part), ids.Count));
             }
             var pile = columns.FirstOrDefault(c => c.Item1.Part == RemmingwerkPart.Buispaal);
             var post = columns.FirstOrDefault(c => c.Item1.Part == RemmingwerkPart.StalenStijl);
@@ -621,7 +606,7 @@ namespace FoundationProjectionToggle.Services
                 sb.AppendLine(string.Format("Stalen stijl: {0} .. {1} m NAP.",
                     RemmingwerkFormat.Metres(post.Item1.BottomMm - levelZ), RemmingwerkFormat.Metres(post.Item1.TopMm - levelZ)));
             }
-            sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "Teruggelezen: grootste afwijking {0:0.000} mm (max {1:0} mm).", r.MaxDeviationMm, ToleranceMm));
+            sb.AppendLine(string.Format(RemmingwerkFormat.Culture, "Teruggelezen: grootste afwijking {0:0.000} mm (max {1:0} mm).", r.MaxDeviationMm, ToleranceMm));
             foreach (var d in deviations) sb.AppendLine("  TE GROOT: " + d);
 
             var warnings = plan.Warnings.Concat(notes).Concat(failures.WarningSummary()).ToList();

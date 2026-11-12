@@ -57,6 +57,18 @@ namespace FoundationProjectionToggle.Core.Remmingwerk
 
         /// <summary>NLRS_C_diameter of the tube pile (ø610x12.5: 610).</summary>
         public double PaalDiameterMm { get; set; } = double.NaN;
+
+        /// <summary>Sizes from the chosen steel types (null type = NaN).</summary>
+        public static SteelDimensions FromTypes(TypeOption gording, TypeOption stijl, TypeOption paal)
+        {
+            return new SteelDimensions
+            {
+                GordingHoogteMm = gording != null ? gording.HoogteMm : double.NaN,
+                GordingBreedteMm = gording != null ? gording.BreedteMm : double.NaN,
+                StijlHoogteMm = stijl != null ? stijl.HoogteMm : double.NaN,
+                PaalDiameterMm = paal != null ? paal.DiameterMm : double.NaN,
+            };
+        }
     }
 
     /// <summary>One selected line: its plan curve and height (mm, Revit internal coordinates).</summary>

@@ -37,7 +37,7 @@ zijn beide gelijk, en daar zitten de families zoals hieronder.
 | G. 20 m, "palen links" | palen op +1105 (andere kant) | OK |
 | F. zonder staaltypen (849 typen tijdelijk verwijderd, teruggedraaid) | knop meldt de 3 ontbrekende typen met het K:-pad, niets geplaatst | OK |
 | F2. type bestaat niet | geweigerd, 0 elementen, model ongewijzigd (135 → 135) | OK |
-| UI: echte knop (PostCommand) op lijn U | venster vooringevuld (N.A.P., SB_wrijfgording, SC_wrijfstijl, balk/kolom HEA450, **kolom ø610x12.5**), overzicht "5 palen à 21,8 m, eerste op 1,500 m"; Plaatsen → "5 buispalen … (21 elementen, afwijking max 0.000 mm)"; Undo → weer 135 | OK |
+| UI: echte knop (PostCommand) op lijn U | venster vooringevuld (N.A.P., SB_wrijfgording, SC_wrijfstijl, balk/kolom HEA450, **kolom ø610x12.5**), overzicht "5 palen à 21,8 m, eerste op 1,500 m"; Plaatsen → "5 buispalen … (21 elementen, afwijking max 0,000 mm)"; Undo → weer 135 | OK |
 
 Elke plaatsing leest zelf alles terug (≤ 1 mm, draaiing ≤ 0,1°) en houdt anders niets; het harnas
 controleert daarnaast tegen eigen, los uitgeschreven verwachtingen.

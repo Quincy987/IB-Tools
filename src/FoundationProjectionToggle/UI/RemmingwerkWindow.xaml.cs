@@ -130,16 +130,7 @@ namespace FoundationProjectionToggle.UI
 
         private SteelDimensions Steel()
         {
-            var g = GordingBox.SelectedItem as TypeOption;
-            var st = StijlBox.SelectedItem as TypeOption;
-            var p = PaalBox.SelectedItem as TypeOption;
-            return new SteelDimensions
-            {
-                GordingHoogteMm = g != null ? g.HoogteMm : double.NaN,
-                GordingBreedteMm = g != null ? g.BreedteMm : double.NaN,
-                StijlHoogteMm = st != null ? st.HoogteMm : double.NaN,
-                PaalDiameterMm = p != null ? p.DiameterMm : double.NaN,
-            };
+            return SteelDimensions.FromTypes(GordingBox.SelectedItem as TypeOption, StijlBox.SelectedItem as TypeOption, PaalBox.SelectedItem as TypeOption);
         }
 
         private RemmingwerkPlan Preview(out string error, out Control field)

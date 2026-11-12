@@ -397,7 +397,7 @@ namespace IBTools.RevitHarness
                 if (bb == null) continue;
                 var lp = fi.Location as LocationPoint;
                 Log(string.Format(CultureInfo.InvariantCulture, "   bbox {0} {1}: x {2:0} .. {3:0}, y {4:0} .. {5:0}, z {6:0} .. {7:0} mm{8}",
-                    label.Split('.')[0], RemmingwerkService.PartName(part), bb.Min.X * Mm, bb.Max.X * Mm, bb.Min.Y * Mm, bb.Max.Y * Mm, bb.Min.Z * Mm, bb.Max.Z * Mm,
+                    label.Split('.')[0], RemmingwerkParts.Name(part), bb.Min.X * Mm, bb.Max.X * Mm, bb.Min.Y * Mm, bb.Max.Y * Mm, bb.Min.Z * Mm, bb.Max.Z * Mm,
                     lp != null ? string.Format(CultureInfo.InvariantCulture, "; punt ({0:0}; {1:0}), draaiing {2:0.###}°", lp.Point.X * Mm, lp.Point.Y * Mm, lp.Rotation * 180 / Math.PI) : string.Empty));
             }
         }

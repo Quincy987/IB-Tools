@@ -90,10 +90,17 @@ namespace FoundationProjectionToggle.Services
             }
             else if (option.FromAddIn)
             {
-                var family = EmbeddedFamilyLoader.FindFamily(doc, option.FamilyName) ?? EmbeddedFamilyLoader.Load(doc, option.FamilyName);
+                var family = EmbeddedFamilyLoader.FindFamily(doc, option.FamilyName);
+                if (family == null)
+                {
+                    family = EmbeddedFamilyLoader.Load(doc, option.FamilyName);
+                    if (family != null)
+                    {
+                        notes.Add($"Familie {option.FamilyName} geladen uit IB Tools.");
+                    }
+                }
                 if (family != null)
                 {
-                    notes.Add($"Familie {option.FamilyName} geladen uit IB Tools.");
                     var symbols = family.GetFamilySymbolIds().Select(i => doc.GetElement(i) as FamilySymbol).Where(s => s != null).ToList();
                     symbol = symbols.FirstOrDefault(s => string.Equals(s.Name, option.TypeName, StringComparison.OrdinalIgnoreCase)) ?? symbols.FirstOrDefault();
                 }
