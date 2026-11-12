@@ -129,14 +129,7 @@ namespace FoundationProjectionToggle.Core.Remmingwerk
             if (piles.Count > 0)
             {
                 // Lines at different heights give different pile lengths: show the range.
-                double shortest = piles.Min(p => p.LengthMm);
-                double longest = piles.Max(p => p.LengthMm);
-                var len = RemmingwerkFormat.MetresShort(shortest);
-                if (RemmingwerkFormat.MetresShort(longest) != len)
-                {
-                    len += " – " + RemmingwerkFormat.MetresShort(longest);
-                }
-                sb.Append(" à ").Append(len).Append(" m");
+                sb.Append(" à ").Append(RemmingwerkFormat.Range(piles.Select(p => p.LengthMm), RemmingwerkFormat.MetresShort)).Append(" m");
             }
             if (Lines.Count == 1)
             {

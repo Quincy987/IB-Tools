@@ -360,6 +360,14 @@ namespace FoundationProjectionToggle.Core.Tests
         }
 
         [Fact]
+        public void Range_shows_one_value_or_lowest_to_highest()
+        {
+            Assert.Equal("21,8", RemmingwerkFormat.Range(new[] { 21800.0, 21820 }, RemmingwerkFormat.MetresShort));
+            Assert.Equal("21,800 – 22,800", RemmingwerkFormat.Range(new[] { 22800.0, 21800 }, RemmingwerkFormat.Metres));
+            Assert.Equal(string.Empty, RemmingwerkFormat.Range(new double[0], RemmingwerkFormat.Metres));
+        }
+
+        [Fact]
         public void Type_option_label_shows_dimensions()
         {
             var t = new TypeOption { FamilyName = "NLRS_28_SC_TLB_kolom HEA_gen_ISR", TypeName = "kolom HEA450", HoogteMm = 440, BreedteMm = 300 };

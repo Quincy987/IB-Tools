@@ -310,19 +310,19 @@ namespace FoundationProjectionToggle.Services
                         t.RollBack();
                         return RemmingwerkResult.Fail(
                             $"{deviations.Count} elementen kwamen meer dan {ToleranceMm:0} mm (of {RotationToleranceDeg}°) naast de berekende plek. Niets geplaatst.",
-                            BuildReport(req, plan, level, levelZ, result, placedColumns, notes, failures, deviations, false), plan);
+                            BuildReport(req, plan, level, levelZ, result, notes, failures, deviations, false), plan);
                     }
 
                     var status = t.Commit();
                     if (status != TransactionStatus.Committed || failures.Errors.Count > 0)
                     {
                         return RemmingwerkResult.Fail("Revit heeft het plaatsen geweigerd: " + string.Join(" ", failures.Errors.Distinct()),
-                            BuildReport(req, plan, level, levelZ, result, placedColumns, notes, failures, deviations, false), plan);
+                            BuildReport(req, plan, level, levelZ, result, notes, failures, deviations, false), plan);
                     }
 
                     result.Succeeded = true;
                     result.Summary = Summary(plan, result);
-                    result.Report = BuildReport(req, plan, level, levelZ, result, placedColumns, notes, failures, deviations, true);
+                    result.Report = BuildReport(req, plan, level, levelZ, result, notes, failures, deviations, true);
                     Logger.Info($"Remmingwerk placed: {result.Created.Count} elements, max deviation {maxDev:0.000} mm, max rotation {maxRot:0.000}°");
                     return result;
                 }
@@ -558,7 +558,7 @@ namespace FoundationProjectionToggle.Services
         }
 
         private static string BuildReport(RemmingwerkRequest req, RemmingwerkPlan plan, Level level, double levelZ, RemmingwerkResult r,
-            List<Tuple<PlannedColumn, FamilyInstance>> columns, IList<string> notes, FailureCollector failures, IList<string> deviations, bool placed)
+            IList<string> notes, FailureCollector failures, IList<string> deviations, bool placed)
         {
             var s = req.Settings;
             var sb = new StringBuilder();
@@ -594,17 +594,21 @@ namespace FoundationProjectionToggle.Services
                     ? string.Format("{0} ({1}): {2}", RemmingwerkParts.Name(part), ids.Count, string.Join(", ", ids.Select(i => i.ToString())))
                     : string.Format("{0}: {1} berekend, niet geplaatst", RemmingwerkParts.Name(part), ids.Count));
             }
-            var pile = columns.FirstOrDefault(c => c.Item1.Part == RemmingwerkPart.Buispaal);
-            var post = columns.FirstOrDefault(c => c.Item1.Part == RemmingwerkPart.StalenStijl);
-            if (pile != null)
+            // Heights over all lines (lines at different heights give a range).
+            var piles = plan.Columns.Where(c => c.Part == RemmingwerkPart.Buispaal).ToList();
+            var posts = plan.Columns.Where(c => c.Part == RemmingwerkPart.StalenStijl).ToList();
+            if (piles.Count > 0)
             {
                 sb.AppendLine(string.Format("Buispaal: o.k. {0} m NAP, b.k. {1} m NAP, lengte {2} m.",
-                    RemmingwerkFormat.Metres(pile.Item1.BottomMm - levelZ), RemmingwerkFormat.Metres(pile.Item1.TopMm - levelZ), RemmingwerkFormat.Metres(pile.Item1.LengthMm)));
+                    RemmingwerkFormat.Range(piles.Select(c => c.BottomMm - levelZ), RemmingwerkFormat.Metres),
+                    RemmingwerkFormat.Range(piles.Select(c => c.TopMm - levelZ), RemmingwerkFormat.Metres),
+                    RemmingwerkFormat.Range(piles.Select(c => c.LengthMm), RemmingwerkFormat.Metres)));
             }
-            if (post != null)
+            if (posts.Count > 0)
             {
-                sb.AppendLine(string.Format("Stalen stijl: {0} .. {1} m NAP.",
-                    RemmingwerkFormat.Metres(post.Item1.BottomMm - levelZ), RemmingwerkFormat.Metres(post.Item1.TopMm - levelZ)));
+                sb.AppendLine(string.Format("Stalen stijl: onderkant {0} m NAP, bovenkant {1} m NAP.",
+                    RemmingwerkFormat.Range(posts.Select(c => c.BottomMm - levelZ), RemmingwerkFormat.Metres),
+                    RemmingwerkFormat.Range(posts.Select(c => c.TopMm - levelZ), RemmingwerkFormat.Metres)));
             }
             sb.AppendLine(string.Format(RemmingwerkFormat.Culture, "Teruggelezen: grootste afwijking {0:0.000} mm (max {1:0} mm).", r.MaxDeviationMm, ToleranceMm));
             foreach (var d in deviations) sb.AppendLine("  TE GROOT: " + d);

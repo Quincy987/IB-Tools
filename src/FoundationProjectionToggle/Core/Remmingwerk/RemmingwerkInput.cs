@@ -159,5 +159,25 @@ namespace FoundationProjectionToggle.Core.Remmingwerk
         {
             return mm.ToString("0.#", Culture);
         }
+
+        /// <summary>
+        /// "21,8" or, when the values differ in the shown precision, "21,8 – 22,8" (lowest – highest).
+        /// </summary>
+        public static string Range(System.Collections.Generic.IEnumerable<double> valuesMm, Func<double, string> format)
+        {
+            double lo = double.MaxValue, hi = double.MinValue;
+            foreach (var v in valuesMm)
+            {
+                lo = Math.Min(lo, v);
+                hi = Math.Max(hi, v);
+            }
+            if (lo > hi)
+            {
+                return string.Empty;
+            }
+            var a = format(lo);
+            var b = format(hi);
+            return a == b ? a : a + " – " + b;
+        }
     }
 }
