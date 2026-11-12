@@ -35,3 +35,7 @@ TestResults/
 
 # Local Revit verification output (screenshots)
 .verify/
+
+# Python
+__pycache__/
+*.pyc
