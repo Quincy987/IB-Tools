@@ -62,6 +62,9 @@ namespace FoundationProjectionToggle
                 RibbonManager.AddPushButton<PlaceCoordinatePointCommand>(application, "Coördinaten", "CoordinatePoint", "Modelpunt",
                     "Plaatst een coördinaatpunt op een RD-coördinaat en NAP-hoogte (via de gedeelde coördinaten van het project).",
                     iconName: "coordpoint", availability: typeof(ProjectDocumentAvailability));
+                RibbonManager.AddPushButton<RemmingwerkCommand>(application, "Kademuren", "Remmingwerk", "Remmingwerk",
+                    "Plaatst een standaard remmingwerk (buispalen, stalen stijlen en gordingen, wrijfgordingen en wrijfstijlen) langs de gekozen modellijn(en). De tekenrichting bepaalt de kant; alles in één Ctrl+Z.",
+                    iconName: "remmingwerk", availability: typeof(ProjectDocumentAvailability));
 
                 // Set references on command for access during execution
                 // This is a simple alternative to full DI container

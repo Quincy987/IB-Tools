@@ -1,10 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Reflection;
 using Autodesk.Revit.DB;
-using FoundationProjectionToggle.Infrastructure;
 
 namespace FoundationProjectionToggle.Services
 {
@@ -15,14 +12,10 @@ namespace FoundationProjectionToggle.Services
     public static class CoordinatePointFamilyService
     {
         public const string FamilyName = "IB_GM_coordinaatpunt";
-        private const string ResourceName = "FoundationProjectionToggle.Resources.families.IB_GM_coordinaatpunt.rfa";
 
         public static Family FindFamily(Document doc)
         {
-            return new FilteredElementCollector(doc)
-                .OfClass(typeof(Family))
-                .Cast<Family>()
-                .FirstOrDefault(f => string.Equals(f.Name, FamilyName, StringComparison.OrdinalIgnoreCase));
+            return EmbeddedFamilyLoader.FindFamily(doc, FamilyName);
         }
 
         /// <summary>
@@ -45,7 +38,7 @@ namespace FoundationProjectionToggle.Services
                     return SortByScale(names);
                 }
             }
-            var fromFile = FamilyPartAtomReader.ReadTypeNames(ReadEmbeddedRfa());
+            var fromFile = FamilyPartAtomReader.ReadTypeNames(EmbeddedFamilyLoader.ReadBytes(FamilyName));
             return fromFile.Count > 0 ? fromFile : new List<string> { "Schaal 1op20" };
         }
 
@@ -59,7 +52,7 @@ namespace FoundationProjectionToggle.Services
             var family = FindFamily(doc);
             if (family == null)
             {
-                family = LoadEmbeddedFamily(doc);
+                family = EmbeddedFamilyLoader.Load(doc, FamilyName);
                 notes.Add($"Familie {FamilyName} geladen uit IB Tools.");
             }
             if (family == null)
@@ -85,81 +78,12 @@ namespace FoundationProjectionToggle.Services
             return symbol;
         }
 
-        private static Family LoadEmbeddedFamily(Document doc)
-        {
-            var bytes = ReadEmbeddedRfa();
-            if (bytes == null)
-            {
-                throw new InvalidOperationException("De familie zit niet in de add-in (resource ontbreekt).");
-            }
-
-            // Own folder per load, so parallel Revit sessions never share a file; the file name
-            // stays the family name because Revit names the family after it.
-            var dir = Path.Combine(Path.GetTempPath(), "IBTools", "coordpoint", Guid.NewGuid().ToString("N"));
-            var path = Path.Combine(dir, FamilyName + ".rfa");
-            try
-            {
-                Directory.CreateDirectory(dir);
-                File.WriteAllBytes(path, bytes);
-                Family family;
-                if (!doc.LoadFamily(path, new KeepExistingLoadOptions(), out family) || family == null)
-                {
-                    family = FindFamily(doc);
-                }
-                Logger.Info($"Loaded {FamilyName} from embedded resource: {(family != null ? "ok" : "failed")}");
-                return family;
-            }
-            finally
-            {
-                try
-                {
-                    Directory.Delete(dir, true);
-                }
-                catch (Exception ex)
-                {
-                    Logger.Warn($"Could not delete temp folder {dir}: {ex.Message}");
-                }
-            }
-        }
-
-        private static byte[] ReadEmbeddedRfa()
-        {
-            using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(ResourceName))
-            {
-                if (stream == null)
-                {
-                    return null;
-                }
-                using (var ms = new MemoryStream())
-                {
-                    stream.CopyTo(ms);
-                    return ms.ToArray();
-                }
-            }
-        }
-
         private static IList<string> SortByScale(List<string> names)
         {
             return names
                 .OrderBy(n => FamilyPartAtomReader.ScaleOf(n) ?? int.MaxValue)
                 .ThenBy(n => n, StringComparer.OrdinalIgnoreCase)
                 .ToList();
-        }
-
-        private sealed class KeepExistingLoadOptions : IFamilyLoadOptions
-        {
-            public bool OnFamilyFound(bool familyInUse, out bool overwriteParameterValues)
-            {
-                overwriteParameterValues = false;
-                return false;
-            }
-
-            public bool OnSharedFamilyFound(Family sharedFamily, bool familyInUse, out FamilySource source, out bool overwriteParameterValues)
-            {
-                source = FamilySource.Project;
-                overwriteParameterValues = false;
-                return false;
-            }
         }
     }
 }

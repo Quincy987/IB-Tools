@@ -1,0 +1,50 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{9D00CCFD-E0BD-427C-A6FC-98A51CCE6335}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FoundationProjectionToggle", "src\FoundationProjectionToggle\FoundationProjectionToggle.csproj", "{B680BC32-9506-4025-94EA-2D3F9BF1ED44}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{64889BCB-4815-4F9D-B9A3-778AE3062D27}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FoundationProjectionToggle.Core.Tests", "tests\FoundationProjectionToggle.Core.Tests\FoundationProjectionToggle.Core.Tests.csproj", "{A2523C1D-9998-453D-A52B-5479002E5366}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IBTools.Tests", "tests\IBTools.Tests\IBTools.Tests.csproj", "{9AF0CB8F-AFD7-4402-8BE9-9FC303E59C7B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RevitHarness", "tests\RevitHarness\RevitHarness.csproj", "{D6F2A78B-531F-4440-B129-48D232120771}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B680BC32-9506-4025-94EA-2D3F9BF1ED44}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{B680BC32-9506-4025-94EA-2D3F9BF1ED44}.Debug|Any CPU.Build.0 = Debug|x64
+		{B680BC32-9506-4025-94EA-2D3F9BF1ED44}.Release|Any CPU.ActiveCfg = Release|x64
+		{B680BC32-9506-4025-94EA-2D3F9BF1ED44}.Release|Any CPU.Build.0 = Release|x64
+		{A2523C1D-9998-453D-A52B-5479002E5366}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A2523C1D-9998-453D-A52B-5479002E5366}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A2523C1D-9998-453D-A52B-5479002E5366}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A2523C1D-9998-453D-A52B-5479002E5366}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9AF0CB8F-AFD7-4402-8BE9-9FC303E59C7B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9AF0CB8F-AFD7-4402-8BE9-9FC303E59C7B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9AF0CB8F-AFD7-4402-8BE9-9FC303E59C7B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9AF0CB8F-AFD7-4402-8BE9-9FC303E59C7B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D6F2A78B-531F-4440-B129-48D232120771}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{D6F2A78B-531F-4440-B129-48D232120771}.Debug|Any CPU.Build.0 = Debug|x64
+		{D6F2A78B-531F-4440-B129-48D232120771}.Release|Any CPU.ActiveCfg = Release|x64
+		{D6F2A78B-531F-4440-B129-48D232120771}.Release|Any CPU.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{B680BC32-9506-4025-94EA-2D3F9BF1ED44} = {9D00CCFD-E0BD-427C-A6FC-98A51CCE6335}
+		{A2523C1D-9998-453D-A52B-5479002E5366} = {64889BCB-4815-4F9D-B9A3-778AE3062D27}
+		{9AF0CB8F-AFD7-4402-8BE9-9FC303E59C7B} = {64889BCB-4815-4F9D-B9A3-778AE3062D27}
+		{D6F2A78B-531F-4440-B129-48D232120771} = {64889BCB-4815-4F9D-B9A3-778AE3062D27}
+	EndGlobalSection
+EndGlobal
