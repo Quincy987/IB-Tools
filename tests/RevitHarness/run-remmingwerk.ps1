@@ -1,10 +1,11 @@
 <#
 .SYNOPSIS
     Revit integration test for the "Remmingwerk" button, end to end (see README.md):
-    takes the Revit test lock (via build.ps1), deploys IB Tools + the harness, opens a COPY of the
-    kade model, answers the start-up dialogs, runs ui-test-remmingwerk.ps1 and waits for the
-    harness to finish. ALWAYS releases the lock (closes only its own Revit) and removes the
-    harness from the Addins folder again.
+    takes the Revit test lock FIRST (before anything is put in the shared Addins folder; busy =
+    stop with exit 2), deploys IB Tools + the harness, opens a COPY of the kade model, answers the
+    start-up dialogs, runs ui-test-remmingwerk.ps1 and waits for the harness to finish. Once the
+    lock is ours it ALWAYS releases it (closes only its own Revit) and removes the harness from the
+    Addins folder again.
 .EXAMPLE
     $env:IBTOOLS_LOCK_OWNER = "<thread name>"; .\tests\RevitHarness\run-remmingwerk.ps1
 #>
@@ -25,28 +26,35 @@ $steel = @(
     "Structural columns\NLRS_28_SC_Kolommen_staal\NLRS_28_SC_TLB_kolom HEA_gen_ISR",
     "Structural columns\NLRS_28_SC_Kolommen_staal\NLRS_28_SC_TLB_kolom buis_gen_ISR")
 
-# --- job folder, model copy, steel families (K:, else the local cache) ---
-if (Test-Path $job) { Remove-Item -Recurse -Force $job }
-New-Item -ItemType Directory -Force (Join-Path $job "staal") | Out-Null
-Copy-Item -Force $Source $model
-Get-ChildItem $root -Filter "*.0*.rvt" -ErrorAction SilentlyContinue | Remove-Item -Force
-foreach ($s in $steel) {
-    $name = Split-Path $s -Leaf
-    $from = Join-Path $lib $s
-    if (-not (Test-Path $from)) { $from = Join-Path $cache $name }
-    Copy-Item -Recurse -Force $from (Join-Path $job "staal\$name")
-}
-Set-Content -Path (Join-Path $job "remmingwerk.txt") -Value "remmingwerk"
-
-# --- harness ---
-& dotnet build (Join-Path $repo "tests\RevitHarness") -c Release -v q -nologo | Out-Host
-if ($LASTEXITCODE -ne 0) { throw "harness build mislukt" }
-$harnessDll = Join-Path $repo "tests\RevitHarness\bin\Release\IBTools.RevitHarness.dll"
-Copy-Item -Force $harnessDll, (Join-Path $repo "tests\RevitHarness\IBTools.RevitHarness.addin") $addins
-
-$env:IBTOOLS_HARNESS_JOB = $job
+# --- the lock first: another session may be testing, possibly this same test (same job folder)
+#     or another harness job (same harness dll in the Addins folder). Nothing is touched before. ---
 Push-Location $repo
+& .\scripts\revit-lock.ps1 take
+if ($LASTEXITCODE -ne 0) {
+    Pop-Location
+    Write-Host "Testslot bezet door een andere sessie: niets aangeraakt. Probeer het over ~10 minuten opnieuw." -ForegroundColor Yellow
+    exit 2
+}
 try {
+    # --- job folder, model copy, steel families (K:, else the local cache) ---
+    if (Test-Path $job) { Remove-Item -Recurse -Force $job }
+    New-Item -ItemType Directory -Force (Join-Path $job "staal") | Out-Null
+    Copy-Item -Force $Source $model
+    Get-ChildItem $root -Filter "*.0*.rvt" -ErrorAction SilentlyContinue | Remove-Item -Force
+    foreach ($s in $steel) {
+        $name = Split-Path $s -Leaf
+        $from = Join-Path $lib $s
+        if (-not (Test-Path $from)) { $from = Join-Path $cache $name }
+        Copy-Item -Recurse -Force $from (Join-Path $job "staal\$name")
+    }
+    Set-Content -Path (Join-Path $job "remmingwerk.txt") -Value "remmingwerk"
+
+    # --- harness ---
+    & dotnet build (Join-Path $repo "tests\RevitHarness") -c Release -v q -nologo | Out-Host
+    if ($LASTEXITCODE -ne 0) { throw "harness build mislukt" }
+    $harnessDll = Join-Path $repo "tests\RevitHarness\bin\Release\IBTools.RevitHarness.dll"
+    Copy-Item -Force $harnessDll, (Join-Path $repo "tests\RevitHarness\IBTools.RevitHarness.addin") $addins
+    $env:IBTOOLS_HARNESS_JOB = $job
     & .\build.ps1 -Deploy -OpenFile $model
     if ($LASTEXITCODE -ne 0) { throw "build.ps1 exit $LASTEXITCODE (2 = testslot bezet, 3 = deploy geblokkeerd)" }
     $revitPid = [int]((Get-Content "$env:LOCALAPPDATA\IBTools\revit.pid" -TotalCount 1) -split " ")[0]

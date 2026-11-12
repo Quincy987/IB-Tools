@@ -397,6 +397,25 @@ namespace FoundationProjectionToggle.Core.Remmingwerk
             }
         }
 
+        /// <summary>
+        /// What was selected, e.g. "Voorzijde: 20,000 m recht (0,000 m t.o.v. N.A.P.)", with the
+        /// height relative to the chosen NAP level (null = without heights).
+        /// </summary>
+        public static string DescribeLines(IList<RemmingwerkLine> lines, LevelOption nap)
+        {
+            var sb = new StringBuilder();
+            sb.Append(lines.Count == 1 ? "Voorzijde: " : lines.Count + " lijnen: ");
+            sb.Append(string.Join("; ", lines.Select(l =>
+            {
+                var arc = l.Curve as PlanArc;
+                var what = arc != null ? "boog R " + RemmingwerkFormat.Metres(arc.Radius) + " m" : "recht";
+                var height = nap != null ? " (" + RemmingwerkFormat.Metres(l.ZMm - nap.ElevationMm) + " m t.o.v. " + nap.Name + ")" : string.Empty;
+                return RemmingwerkFormat.Metres(l.Curve.Length) + " m " + what + height;
+            })));
+            sb.Append(". Gordingen en stijlen beginnen op de hoogte van de lijn.");
+            return sb.ToString();
+        }
+
         private static string LineName(RemmingwerkLine line, int index, int count)
         {
             if (!string.IsNullOrEmpty(line.Label))

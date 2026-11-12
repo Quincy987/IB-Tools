@@ -18,7 +18,7 @@ namespace FoundationProjectionToggle.UI
         private readonly IList<RemmingwerkLine> _lines;
         private bool _loaded;
 
-        public RemmingwerkWindow(UIApplication uiapp, string info, IList<RemmingwerkLine> lines,
+        public RemmingwerkWindow(UIApplication uiapp, IList<RemmingwerkLine> lines,
             IList<LevelOption> levels, int defaultLevel,
             IList<TypeOption> wrijfgording, int wrijfgordingDefault,
             IList<TypeOption> wrijfstijl, int wrijfstijlDefault,
@@ -31,8 +31,8 @@ namespace FoundationProjectionToggle.UI
             InitializeComponent();
             _lines = lines;
 
-            InfoText.Text = info ?? string.Empty;
             Fill(LevelBox, levels, defaultLevel);
+            InfoText.Text = RemmingwerkPlanner.DescribeLines(_lines, LevelBox.SelectedItem as LevelOption);
             Fill(WrijfgordingBox, wrijfgording, wrijfgordingDefault);
             Fill(WrijfstijlBox, wrijfstijl, wrijfstijlDefault);
             Fill(GordingBox, gording, gordingDefault);
@@ -152,6 +152,7 @@ namespace FoundationProjectionToggle.UI
 
         private void UpdateOverview()
         {
+            InfoText.Text = RemmingwerkPlanner.DescribeLines(_lines, LevelBox.SelectedItem as LevelOption);
             string error;
             Control field;
             var plan = Preview(out error, out field);

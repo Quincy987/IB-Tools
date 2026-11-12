@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
@@ -77,7 +76,7 @@ namespace FoundationProjectionToggle.Commands
                     return Result.Cancelled;
                 }
 
-                var window = new RemmingwerkWindow(uiapp, Describe(ctx), ctx.Lines, ctx.Levels, ctx.DefaultLevel,
+                var window = new RemmingwerkWindow(uiapp, ctx.Lines, ctx.Levels, ctx.DefaultLevel,
                     ctx.Wrijfgording, RemmingwerkFamilyService.ChooseDefault(ctx.Wrijfgording, _wrijfgording),
                     ctx.Wrijfstijl, RemmingwerkFamilyService.ChooseDefault(ctx.Wrijfstijl, _wrijfstijl),
                     ctx.StalenGording, RemmingwerkFamilyService.ChooseDefault(ctx.StalenGording, _gording, RemmingwerkFamilyService.StalenGordingHints),
@@ -132,22 +131,6 @@ namespace FoundationProjectionToggle.Commands
                 ResultDialog.Show(uiapp, Title, "Er ging iets mis: " + ex.Message, ex.ToString(), copyImmediately: true);
                 return Result.Failed;
             }
-        }
-
-        private static string Describe(RemmingwerkContext ctx)
-        {
-            var nap = ctx.DefaultLevel >= 0 ? ctx.Levels[ctx.DefaultLevel] : null;
-            var sb = new StringBuilder();
-            sb.Append(ctx.Lines.Count == 1 ? "Voorzijde: " : ctx.Lines.Count + " lijnen: ");
-            sb.Append(string.Join("; ", ctx.Lines.Select(l =>
-            {
-                var arc = l.Curve as PlanArc;
-                var what = arc != null ? "boog R " + RemmingwerkFormat.Metres(arc.Radius) + " m" : "recht";
-                var height = nap != null ? " (" + RemmingwerkFormat.Metres(l.ZMm - nap.ElevationMm) + " m t.o.v. " + nap.Name + ")" : string.Empty;
-                return RemmingwerkFormat.Metres(l.Curve.Length) + " m " + what + height;
-            })));
-            sb.Append(". Gordingen en stijlen beginnen op de hoogte van de lijn.");
-            return sb.ToString();
         }
 
         private sealed class ModelLineFilter : ISelectionFilter

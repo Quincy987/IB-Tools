@@ -33,7 +33,9 @@ Remove-Item "$addins\IBTools.RevitHarness.addin"
 
 Zelfde harnas, andere job: een jobmap met `remmingwerk.txt` draait `RemmingwerkHarness.cs`.
 Alles in één script (testslot, kopie van het kademodel, staaltypen van K: of de lokale cache,
-harnas deployen/weghalen, UI-test, `release` in `finally`):
+harnas deployen/weghalen, UI-test, `release` in `finally`). Het slot komt **eerst**: is het bezet
+door een andere sessie, dan stopt het script met exit 2 zonder iets aan te raken (geen jobmap, niets
+in de Addins-map):
 
 ```powershell
 $env:IBTOOLS_LOCK_OWNER = "<threadnaam>"

@@ -345,6 +345,21 @@ namespace FoundationProjectionToggle.Core.Tests
         }
 
         [Fact]
+        public void Description_follows_the_chosen_level()
+        {
+            var lines = new List<RemmingwerkLine>
+            {
+                new RemmingwerkLine(new PlanLine(new Pt2(0, 0), new Pt2(20000, 0)), 0, "1"),
+                new RemmingwerkLine(new PlanArc(new Pt2(0, 0), 30000, 0, Math.PI / 2), 0, "2"),
+            };
+            var nap = new LevelOption { Name = "N.A.P.", ElevationMm = 0 };
+            var other = new LevelOption { Name = "Peil", ElevationMm = -1500 };
+            Assert.Equal("2 lijnen: 20,000 m recht (0,000 m t.o.v. N.A.P.); 47,124 m boog R 30,000 m (0,000 m t.o.v. N.A.P.). Gordingen en stijlen beginnen op de hoogte van de lijn.",
+                RemmingwerkPlanner.DescribeLines(lines, nap));
+            Assert.Contains("(1,500 m t.o.v. Peil)", RemmingwerkPlanner.DescribeLines(lines, other));
+        }
+
+        [Fact]
         public void Type_option_label_shows_dimensions()
         {
             var t = new TypeOption { FamilyName = "NLRS_28_SC_TLB_kolom HEA_gen_ISR", TypeName = "kolom HEA450", HoogteMm = 440, BreedteMm = 300 };
