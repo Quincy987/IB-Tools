@@ -255,35 +255,52 @@ def park_mouse():
 # ---------------------------------------------------------------- ribbon
 RIBBON_IDS = {   # label -> automation id of the ribbon Button (probe.py); plain "Worksets" also matches Revit's own
     "Hide": "CustomCtrl_%CustomCtrl_%IB Tools%Weergave%ToggleProjection",
+    "Remmingwerk": "CustomCtrl_%CustomCtrl_%IB Tools%Kademuren%Remmingwerk",
     "Worksets": "CustomCtrl_%CustomCtrl_%IB Tools%Model%IbWorksets",
     "Modelpunt": "CustomCtrl_%CustomCtrl_%IB Tools%Coördinaten%CoordinatePoint",
     "Paalcoördinaten": "CustomCtrl_%CustomCtrl_%IB Tools%Coördinaten%PileCoordinates",
 }
 
 
-def find_ribbon_buttons(main):
+def find_ribbon_buttons(hwnd, attempts=3):
     """Click the IB Tools ribbon tab (a Button with automation id 'IB Tools') and return
-    {label: button element} for the buttons on it, found by automation id inside the tab's panel bar."""
-    tabs = [t for t in main.descendants(control_type="Button") if t.element_info.automation_id == "IB Tools"]
-    if tabs:
-        click_element(tabs[0])
-        time.sleep(1.2)
-    else:
-        log("Ribbon tab 'IB Tools' not found via UIA")
-    found = {}
-    bars = [e for e in main.descendants() if e.element_info.automation_id == "IB Tools_PanelBarScrollViewer"]
-    scope = bars[0] if bars else main
-    for b in scope.descendants(control_type="Button"):
-        aid = b.element_info.automation_id or ""
-        for label, want in RIBBON_IDS.items():
-            if aid == want and label not in found:
-                found[label] = b
-    log("Ribbon buttons found: " + ", ".join(found) if found else "Ribbon buttons NOT found via UIA")
-    return found
+    {label: button element} for the buttons on it, found by automation id inside the tab's panel bar.
+    UIA on Revit's main window sometimes throws a transient COM error (event cannot invoke
+    subscribers): retry with a fresh window object. Empty dict = press() falls back to PostCommand."""
+    for attempt in range(1, attempts + 1):
+        try:
+            main = UIA.window(handle=hwnd)
+            tabs = [t for t in main.descendants(control_type="Button") if t.element_info.automation_id == "IB Tools"]
+            if tabs:
+                click_element(tabs[0])
+                time.sleep(1.2)
+            else:
+                log("Ribbon tab 'IB Tools' not found via UIA (attempt %d)" % attempt)
+            found = {}
+            bars = [e for e in main.descendants() if e.element_info.automation_id == "IB Tools_PanelBarScrollViewer"]
+            scope = bars[0] if bars else main
+            for b in scope.descendants(control_type="Button"):
+                aid = b.element_info.automation_id or ""
+                for label, want in RIBBON_IDS.items():
+                    if aid == want and label not in found:
+                        found[label] = b
+            if found:
+                log("Ribbon buttons found: " + ", ".join(found))
+                if tabs:
+                    found["_tab"] = tabs[0]   # press() re-activates the tab (a selection switches Revit to Modify)
+                return found
+        except Exception as e:  # noqa: BLE001
+            log("UIA ribbon lookup failed (attempt %d): %s" % (attempt, str(e)[:160]))
+        time.sleep(2.5)
+    log("Ribbon buttons NOT found via UIA; buttons will be pressed via PostCommand")
+    return {}
 
 
 def press(label, buttons):
     if label in buttons:
+        if "_tab" in buttons:
+            click_element(buttons["_tab"], hover=0.3)  # back to IB Tools (Revit shows Modify after a selection)
+            time.sleep(1.0)
         click_element(buttons[label], hover=0.9)      # the hover shows Revit's tooltip
     else:
         vm_exec('uiApp.PostCommand(RevitCommandId.LookupCommandId("%s"));' % BUTTONS[label])
@@ -353,6 +370,34 @@ def prepare_model():
     time.sleep(2)
 
 
+def hide_chat_pane():
+    vm_exec('var p = uiApp.GetDockablePane(new DockablePaneId(new Guid("%s"))); if (p.IsShown()) p.Hide(); sb.Append("ok");' % CHAT_PANE)
+
+
+def zoom_selection(margin_mm):
+    """Zooms the active view to the selected elements (+ margin). A UI zoom only: nothing on the
+    undo stack, so a Ctrl+Z afterwards still undoes the placement and not the camera."""
+    vm_exec('''var ids = uiDoc.Selection.GetElementIds(); BoundingBoxXYZ bb = null;
+      foreach (var id in ids) { var b = doc.GetElement(id).get_BoundingBox(uiDoc.ActiveView); if (b == null) continue;
+        if (bb == null) bb = new BoundingBoxXYZ { Min = b.Min, Max = b.Max };
+        else { bb.Min = new XYZ(Math.Min(bb.Min.X, b.Min.X), Math.Min(bb.Min.Y, b.Min.Y), Math.Min(bb.Min.Z, b.Min.Z));
+               bb.Max = new XYZ(Math.Max(bb.Max.X, b.Max.X), Math.Max(bb.Max.Y, b.Max.Y), Math.Max(bb.Max.Z, b.Max.Z)); } }
+      if (bb == null) { sb.Append("no bbox"); } else {
+        double m = %s / 304.8; var uv = uiDoc.GetOpenUIViews().First(v => v.ViewId == uiDoc.ActiveView.Id);
+        uv.ZoomAndCenterRectangle(bb.Min - new XYZ(m, m, m), bb.Max + new XYZ(m, m, m)); sb.Append("zoomed " + ids.Count); }''' % margin_mm)
+
+
+def focus_view_and_send(keys):
+    """Clicks an empty spot of the drawing area (gives Revit's view the keyboard focus, also when
+    another window had it) and sends a shortcut such as ^z."""
+    hide_chat_pane()
+    smooth_move(1250, 1000, 0.5)      # water, lower right of the Kade view
+    mouse.click(coords=(1250, 1000))
+    time.sleep(0.8)
+    from pywinauto import keyboard
+    keyboard.send_keys(keys)
+
+
 # ---------------------------------------------------------------- the show
 def show():
     global REC
@@ -387,7 +432,7 @@ def show():
     mark("card", "IB Tools|Revit-add-in van het Ingenieursbureau|Drie knoppen die Dynamo-scripts vervangen")
     mark("caption", "Tabblad IB Tools: Weergave (projectie aan/uit), Coördinaten (Paalcoördinaten, Modelpunt) en Model (Worksets)",
          step="Lint")
-    buttons = find_ribbon_buttons(main)
+    buttons = find_ribbon_buttons(hwnd)
     for label in ("Hide", "Paalcoördinaten", "Modelpunt", "Worksets"):
         if label in buttons:
             r = buttons[label].rectangle()
@@ -499,10 +544,102 @@ def show():
     mark("end")
 
 
+def show_remmingwerk():
+    """Separate, short video for the Remmingwerk button on the same kade model."""
+    global REC
+    hwnd = main_window()
+    if not answer_startup_dialogs(900):
+        raise RuntimeError("demo model did not open (see log)")
+    hwnd = main_window(60)
+    win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+    win32gui.SetWindowPos(hwnd, win32con.HWND_TOP, 0, 0, W, H, 0)
+    try:
+        win32gui.SetForegroundWindow(hwnd)
+    except Exception:  # noqa: BLE001
+        pass
+    time.sleep(1.5)
+    dismiss_revit_warnings()
+    main = UIA.window(handle=hwnd)
+    vm_exec('var p = uiApp.GetDockablePane(new DockablePaneId(new Guid("%s"))); if (p.IsShown()) p.Hide(); sb.Append("ok");' % CHAT_PANE)
+
+    # The front of the remmingwerk: a 20 m model line 3 m in front of the quay wall, drawn so that
+    # "right of the drawing direction" is the water side (quay wall of the demo model: see
+    # VibeModel demo_out/video/build_deel1.py; the street is left of p0->p1).
+    line = vm_exec('''var p0 = new XYZ(-8844.8 / 304.8, -5033.9 / 304.8, 0); var p1 = new XYZ(-28313.2 / 304.8, -454.3 / 304.8, 0);
+      var d = (p1 - p0).Normalize(); var water = new XYZ(d.Y, -d.X, 0);
+      var a = p0 + d * (2000 / 304.8) + water * (3000 / 304.8); var b = a + d * (20000 / 304.8);
+      var sp = SketchPlane.Create(doc, Plane.CreateByNormalAndOrigin(XYZ.BasisZ, XYZ.Zero));
+      var mc = doc.Create.NewModelCurve(Line.CreateBound(a, b), sp);
+      sb.Append(mc.Id.ToString());''').strip().splitlines()[0]
+    log("Model line: " + line)
+    try:
+        vm("activate", "Kade")
+    except Exception as e:  # noqa: BLE001
+        log("activate Kade failed: %s" % e)
+    # The UIA walk over Revit's ribbon can take a minute or two: do it before recording starts.
+    buttons = find_ribbon_buttons(hwnd)
+    vm_exec('var id = new ElementId(%s); uiDoc.Selection.SetElementIds(new List<ElementId>{id}); sb.Append("ok");' % line)
+    zoom_selection(12000)
+    hide_chat_pane()
+    time.sleep(2)
+
+    REC = subprocess.Popen([sys.executable, os.path.join(HERE, "rec.py"), FRAMES, "0", "0", str(W), str(H)])
+    time.sleep(2.5)
+    park_mouse()
+
+    mark("card", "Remmingwerk|Plaatst een standaard remmingwerk langs een modellijn|Vervangt het Dynamo-script \"Remmingwerk v1.2\"")
+    mark("caption", "De voorzijde is een modellijn vóór de kademuur (hier 20 m, geselecteerd). De tekenrichting bepaalt aan welke kant de palen komen.",
+         step="Remmingwerk")
+    time.sleep(5)
+    mark("caption", "Knop Remmingwerk op het paneel Kademuren.", step="Remmingwerk")
+    press("Remmingwerk", buttons)
+    win = find_window(auto_id="RowsBox", timeout=60)
+    if not win:
+        raise RuntimeError("Remmingwerk window not found")
+    time.sleep(1.0)
+    mark("caption", "Eén venster: NAP-level, de vijf typen uit het project (HEA450, buispaal ø610x12.5, IB-wrijfhout) en de maten van het Dynamo-script.",
+         step="Remmingwerk")
+    time.sleep(6)
+    mark("caption", "Onderin rekent de knop mee: 5 palen à 21,8 m, eerste op 1,500 m. Plaatsen.", step="Remmingwerk")
+    time.sleep(4)
+    if not click_button_in(win, r"^Plaatsen$"):
+        raise RuntimeError("Plaatsen button not found")
+    res = find_window(auto_id="DetailsBox", timeout=180)
+    if not res:
+        raise RuntimeError("Remmingwerk result window not found")
+    summary, details = read_result(res)
+    log("Remmingwerk result: " + summary + "\n" + details[:1500])
+    mark("caption", "Alles staat in één stap in het model: buispalen, stalen stijlen en gordingen, wrijfgordingen en wrijfstijlen. Teruggelezen: afwijking 0,000 mm.",
+         step="Remmingwerk")
+    close_result(res, 8)
+    dismiss_revit_warnings()
+
+    hide_chat_pane()
+    zoom_selection(6000)
+    mark("caption", "Het remmingwerk in 3D, nog geselecteerd. 21 elementen, alles op de berekende plek.", step="Remmingwerk")
+    time.sleep(6)
+    vm_exec('uiDoc.Selection.SetElementIds(new List<ElementId>()); sb.Append("ok");')
+    time.sleep(3)
+
+    mark("caption", "Eén Ctrl+Z haalt het hele remmingwerk weer weg.", step="Remmingwerk")
+    focus_view_and_send("^z")
+    time.sleep(5)
+    mark("caption", "En Ctrl+Y zet het terug.", step="Remmingwerk")
+    focus_view_and_send("^y")
+    time.sleep(5)
+    park_mouse()
+    mark("card", "Remmingwerk|Lijn kiezen, één venster, Plaatsen|Ingenieursbureau Gemeente Amsterdam")
+    mark("end")
+
+
+SCENES = {"ibtools": lambda: show(), "remmingwerk": show_remmingwerk}
+
+
 def main():
     ok = False
+    scene = sys.argv[3] if len(sys.argv) > 3 else "ibtools"
     try:
-        show()
+        SCENES[scene]()
         ok = True
     except Exception:  # noqa: BLE001
         log("FOUT:\n" + traceback.format_exc())

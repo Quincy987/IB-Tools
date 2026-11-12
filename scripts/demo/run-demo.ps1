@@ -9,16 +9,19 @@
 #>
 param(
     [switch]$CutOnly,
+    # "ibtools" = the three-button tour (ibtools-demo.mp4); "remmingwerk" = the separate Remmingwerk video
+    [ValidateSet("ibtools", "remmingwerk")][string]$Scene = "ibtools",
     # quay model with RD coordinates and 40 piles (the earlier test copy has no piles)
     [string]$Source = "C:\Development\VibeModel\demo_out\video\kade\Prinsengracht kademuur 2.0002.rvt"
 )
 $ErrorActionPreference = "Stop"
 $repo = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 $demoDir = Join-Path $env:LOCALAPPDATA "IBTools\demo"
-$take = Join-Path $demoDir "take"
+$take = Join-Path $demoDir "take-$Scene"
 $model = Join-Path $demoDir "IB Tools demo - Prinsengracht kademuur.rvt"
-$out = Join-Path $repo "docs\demo\ibtools-demo.mp4"
-$stills = Join-Path $repo "docs\demo\stills"
+$out = Join-Path $repo "docs\demo\$Scene-demo.mp4"
+$stills = Join-Path $repo "docs\demo\stills-$Scene"
+if ($Scene -eq "ibtools") { $stills = Join-Path $repo "docs\demo\stills" }
 if (-not $env:IBTOOLS_LOCK_OWNER) { $env:IBTOOLS_LOCK_OWNER = "demo-video@Revit-projectlijnen" }
 
 if (-not $CutOnly) {
@@ -35,7 +38,7 @@ if (-not $CutOnly) {
         $pidLine = Get-Content "$env:LOCALAPPDATA\IBTools\revit.pid" -TotalCount 1
         $revitPid = [int]($pidLine -split " ")[0]
         Write-Host "Demo: Revit pid $revitPid, take $take"
-        & python (Join-Path $PSScriptRoot "drive.py") $take $revitPid
+        & python (Join-Path $PSScriptRoot "drive.py") $take $revitPid $Scene
         $driveExit = $LASTEXITCODE
     }
     finally {
