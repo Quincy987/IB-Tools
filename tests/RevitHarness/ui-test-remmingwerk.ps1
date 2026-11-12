@@ -2,8 +2,8 @@
 .SYNOPSIS
     UI half of the Remmingwerk harness: waits for ui-ready.txt, reads and confirms the
     "Remmingwerk" window that the harness opened with PostCommand, reads the result window,
-    then undoes the placement (Undo in the Quick Access Toolbar, else Ctrl+Z) and writes
-    ui-done.txt. Uses Windows UI Automation (WPF controls are found by their x:Name).
+    then undoes the placement with Ctrl+Z on the Revit main window (the Quick Access Toolbar
+    Undo has no UI Automation Invoke pattern) and writes ui-done.txt. Uses Windows UI Automation (WPF controls are found by their x:Name).
 .EXAMPLE
     .\ui-test-remmingwerk.ps1 -Job C:\...\job -RevitPid 12345
 #>
@@ -88,16 +88,6 @@ function Shot-Screen([string]$file) {
 
 function Undo-InRevit {
     $main = [System.Diagnostics.Process]::GetProcessById($RevitPid).MainWindowHandle
-    $root = $AE::FromHandle($main)
-    $undo = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants,
-        (New-Object System.Windows.Automation.PropertyCondition($AE::NameProperty, "Undo")))
-    if ($undo) {
-        try {
-            $undo.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
-            Say "Undo geklikt (Quick Access Toolbar)"
-            return
-        } catch { Say "Undo-knop niet te klikken: $($_.Exception.Message)" }
-    }
     [IbWin]::SetForegroundWindow($main) | Out-Null
     Start-Sleep -Milliseconds 400
     [System.Windows.Forms.SendKeys]::SendWait("^z")

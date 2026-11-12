@@ -24,9 +24,6 @@ namespace FoundationProjectionToggle.Commands
     {
         public const string Title = "Remmingwerk";
 
-        /// <summary>Preselected tube pile: Dynamo's ø610x12.5, else any ø610.</summary>
-        public static readonly string[] BuispaalHints = { "610x12.5", "610x12,5", "610" };
-
         // Remembered per Revit session.
         private static RemmingwerkSettings _settings;
         private static string _level;
@@ -83,9 +80,9 @@ namespace FoundationProjectionToggle.Commands
                 var window = new RemmingwerkWindow(uiapp, Describe(ctx), ctx.Lines, ctx.Levels, ctx.DefaultLevel,
                     ctx.Wrijfgording, RemmingwerkFamilyService.ChooseDefault(ctx.Wrijfgording, _wrijfgording),
                     ctx.Wrijfstijl, RemmingwerkFamilyService.ChooseDefault(ctx.Wrijfstijl, _wrijfstijl),
-                    ctx.StalenGording, RemmingwerkFamilyService.ChooseDefault(ctx.StalenGording, _gording, "HEA450"),
-                    ctx.StalenStijl, RemmingwerkFamilyService.ChooseDefault(ctx.StalenStijl, _stijl, "HEA450"),
-                    ctx.Buispaal, RemmingwerkFamilyService.ChooseDefault(ctx.Buispaal, _paal, BuispaalHints),
+                    ctx.StalenGording, RemmingwerkFamilyService.ChooseDefault(ctx.StalenGording, _gording, RemmingwerkFamilyService.StalenGordingHints),
+                    ctx.StalenStijl, RemmingwerkFamilyService.ChooseDefault(ctx.StalenStijl, _stijl, RemmingwerkFamilyService.StalenStijlHints),
+                    ctx.Buispaal, RemmingwerkFamilyService.ChooseDefault(ctx.Buispaal, _paal, RemmingwerkFamilyService.BuispaalHints),
                     _settings);
                 if (!window.ShowModal())
                 {

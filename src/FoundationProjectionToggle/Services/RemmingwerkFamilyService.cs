@@ -25,6 +25,11 @@ namespace FoundationProjectionToggle.Services
         /// <summary>Where the steel families are in the IB library (for the "missing" message).</summary>
         public const string StalenGordingSource = Library + @"\Strucural beams\NLRS_28_SF_balken_staal\NLRS_28_SF_LIB_balk HEA_gen_ISR\NLRS_28_SF_LIB_balk HEA_gen_ISR.rfa (type balk HEA450)";
         public const string StalenStijlSource = Library + @"\Structural columns\NLRS_28_SC_Kolommen_staal\NLRS_28_SC_TLB_kolom HEA_gen_ISR\NLRS_28_SC_TLB_kolom HEA_gen_ISR.rfa (type kolom HEA450)";
+        /// <summary>Preselected steel types (the Dynamo defaults), tried in order; used for sorting too.</summary>
+        public static readonly string[] StalenGordingHints = { "HEA450" };
+        public static readonly string[] StalenStijlHints = { "HEA450" };
+        public static readonly string[] BuispaalHints = { "610x12.5", "610x12,5", "610" };
+
         public const string BuispaalSource = Library + @"\Structural columns\NLRS_28_SC_Kolommen_staal\NLRS_28_SC_TLB_kolom buis_gen_ISR\NLRS_28_SC_TLB_kolom buis_gen_ISR.rfa (type kolom ø610x12.5)";
 
         /// <summary>Types of the IB wrijfgording family (or the embedded one if not in the project).</summary>
@@ -42,19 +47,19 @@ namespace FoundationProjectionToggle.Services
         /// <summary>Structural framing types with NLRS_C_hoogte and NLRS_C_breedte.</summary>
         public static List<TypeOption> StalenGordingOptions(Document doc)
         {
-            return SteelOptions(doc, BuiltInCategory.OST_StructuralFraming, o => !double.IsNaN(o.HoogteMm) && !double.IsNaN(o.BreedteMm), "HEA450");
+            return SteelOptions(doc, BuiltInCategory.OST_StructuralFraming, o => !double.IsNaN(o.HoogteMm) && !double.IsNaN(o.BreedteMm), StalenGordingHints);
         }
 
         /// <summary>Structural column types with NLRS_C_hoogte.</summary>
         public static List<TypeOption> StalenStijlOptions(Document doc)
         {
-            return SteelOptions(doc, BuiltInCategory.OST_StructuralColumns, o => !double.IsNaN(o.HoogteMm), "HEA450");
+            return SteelOptions(doc, BuiltInCategory.OST_StructuralColumns, o => !double.IsNaN(o.HoogteMm), StalenStijlHints);
         }
 
         /// <summary>Structural column types with NLRS_C_diameter.</summary>
         public static List<TypeOption> BuispaalOptions(Document doc)
         {
-            return SteelOptions(doc, BuiltInCategory.OST_StructuralColumns, o => !double.IsNaN(o.DiameterMm), "610");
+            return SteelOptions(doc, BuiltInCategory.OST_StructuralColumns, o => !double.IsNaN(o.DiameterMm), BuispaalHints);
         }
 
         /// <summary>
@@ -182,7 +187,7 @@ namespace FoundationProjectionToggle.Services
             return result;
         }
 
-        private static List<TypeOption> SteelOptions(Document doc, BuiltInCategory category, Func<TypeOption, bool> usable, string hint)
+        private static List<TypeOption> SteelOptions(Document doc, BuiltInCategory category, Func<TypeOption, bool> usable, string[] hints)
         {
             var result = new List<TypeOption>();
             foreach (var s in new FilteredElementCollector(doc).OfClass(typeof(FamilySymbol)).OfCategory(category).Cast<FamilySymbol>())
@@ -207,7 +212,7 @@ namespace FoundationProjectionToggle.Services
                 }
             }
             return result
-                .OrderBy(o => o.TypeName.IndexOf(hint, StringComparison.OrdinalIgnoreCase) >= 0 ? 0 : 1)
+                .OrderBy(o => hints.Any(h => o.TypeName.IndexOf(h, StringComparison.OrdinalIgnoreCase) >= 0) ? 0 : 1)
                 .ThenBy(o => o.Label, StringComparer.OrdinalIgnoreCase)
                 .ToList();
         }

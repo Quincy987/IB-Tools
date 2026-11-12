@@ -206,9 +206,9 @@ namespace IBTools.RevitHarness
                 Settings = new RemmingwerkSettings(),
                 Wrijfgording = ctx.Wrijfgording[RemmingwerkFamilyService.ChooseDefault(ctx.Wrijfgording, null)],
                 Wrijfstijl = ctx.Wrijfstijl[RemmingwerkFamilyService.ChooseDefault(ctx.Wrijfstijl, null)],
-                StalenGording = ctx.StalenGording[RemmingwerkFamilyService.ChooseDefault(ctx.StalenGording, null, "HEA450")],
-                StalenStijl = ctx.StalenStijl[RemmingwerkFamilyService.ChooseDefault(ctx.StalenStijl, null, "HEA450")],
-                Buispaal = ctx.Buispaal[RemmingwerkFamilyService.ChooseDefault(ctx.Buispaal, null, FoundationProjectionToggle.Commands.RemmingwerkCommand.BuispaalHints)],
+                StalenGording = ctx.StalenGording[RemmingwerkFamilyService.ChooseDefault(ctx.StalenGording, null, RemmingwerkFamilyService.StalenGordingHints)],
+                StalenStijl = ctx.StalenStijl[RemmingwerkFamilyService.ChooseDefault(ctx.StalenStijl, null, RemmingwerkFamilyService.StalenStijlHints)],
+                Buispaal = ctx.Buispaal[RemmingwerkFamilyService.ChooseDefault(ctx.Buispaal, null, RemmingwerkFamilyService.BuispaalHints)],
             };
         }
 
