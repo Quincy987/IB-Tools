@@ -7,21 +7,21 @@ Branch `claude-bot/t-588`, versie 2.1.0. Elke release-zip bevat nu precies vier 
 ## 1. Release-zips (`scripts/release.ps1`)
 
 Unit-tests geslaagd, builds 2022–2025 zonder waarschuwingen. Per zip zijn de vier bestanden
-gecontroleerd (het script stopt als het er andere zijn).
+gecontroleerd (het script stopt als het er andere zijn). Grootte na de laatste build:
 
 ```
-IBTools-v2.1.0-Revit2022.zip 1064 KB   (.NETFramework,Version=v4.8, dll 2.1.0.0)
-IBTools-v2.1.0-Revit2023.zip 1064 KB   (.NETFramework,Version=v4.8, dll 2.1.0.0)
-IBTools-v2.1.0-Revit2024.zip 1064 KB   (.NETFramework,Version=v4.8, dll 2.1.0.0)
-IBTools-v2.1.0-Revit2025.zip 1065 KB   (.NETCoreApp,Version=v8.0, dll 2.1.0.0)
+IBTools-v2.1.0-Revit2022.zip 1065 KB   (.NETFramework,Version=v4.8, dll 2.1.0.0)
+IBTools-v2.1.0-Revit2023.zip 1065 KB   (.NETFramework,Version=v4.8, dll 2.1.0.0)
+IBTools-v2.1.0-Revit2024.zip 1065 KB   (.NETFramework,Version=v4.8, dll 2.1.0.0)
+IBTools-v2.1.0-Revit2025.zip 1066 KB   (.NETCoreApp,Version=v8.0, dll 2.1.0.0)
 ```
 
 ## 2. Installeren.cmd zonder Revit (`tests/Release/test-install.ps1`): 53/53
 
 De bestanden uit elke zip zijn gemarkeerd als download (`Zone.Identifier`, ZoneId=3), zoals
 Windows doet bij het uitpakken van een gedownloade zip. Uitgepakt in een pad met spaties,
-haakjes, een `&` en een letter met trema (`Coördinaten 2023\IBTools (1) & co`). Elke run heeft een eigen APPDATA
-en een nagemaakte Program Files in %TEMP%. Het script is gestart zoals de Verkenner het doet
+haakjes, een `&` en een letter met trema (`Coördinaten 2023\IBTools (1) & co`). Elke run heeft
+een eigen APPDATA en een nagemaakte Program Files en ProgramData in %TEMP%. Het script is gestart zoals de Verkenner het doet
 (`cmd.exe /c ""<pad>""`).
 
 - **Per zip:** precies de vier bestanden, alle vier gemarkeerd als download.
@@ -99,7 +99,7 @@ Revit 2023 niet.
 
 - De Revit-harness (64 checks) is niet opnieuw gedraaid: er is geen add-in-code veranderd.
 - Revit 2022, 2024 en 2025 zijn niet in Revit zelf getest; ze zijn alleen met het testscript
-  zonder Revit gecontroleerd (2025 is op deze pc niet geïnstalleerd).
+  zonder Revit gecontroleerd (op deze pc staat alleen Revit 2023).
 - Dubbelklikken in de echte Verkenner, met de waarschuwing van Windows of SmartScreen, is niet
   nagebootst. Het script is wel gestart met de opdracht die de Verkenner gebruikt. Wat Windows
   dan vraagt staat in `LEESMIJ.txt`.
