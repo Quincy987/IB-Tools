@@ -33,13 +33,6 @@ $owner = (Get-IBToolsOwner) -replace '\s+', '_'
 $work = Join-Path $env:LOCALAPPDATA "IBTools\test\install-check"
 $report = New-Object System.Collections.ArrayList
 
-Push-Location $repo
-& .\scripts\revit-lock.ps1 take
-if ($LASTEXITCODE -ne 0) {
-    Pop-Location
-    Write-Host "Testslot bezet door een andere sessie: niets aangeraakt. Probeer het over ~10 minuten opnieuw." -ForegroundColor Yellow
-    exit 2
-}
 
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
 Add-Type @"
@@ -156,6 +149,15 @@ function Invoke-Scenario([string]$Name, [scriptblock]$Prepare) {
     foreach ($l in $jl) { Write-Host "  journal: $l" -ForegroundColor Gray }
 }
 
+# The lock only now: everything above touches nothing, and from here on the finally below
+# always releases it.
+Push-Location $repo
+& .\scripts\revit-lock.ps1 take
+if ($LASTEXITCODE -ne 0) {
+    Pop-Location
+    Write-Host "Testslot bezet door een andere sessie: niets aangeraakt. Probeer het over ~10 minuten opnieuw." -ForegroundColor Yellow
+    exit 2
+}
 $backup = Join-Path $work "backup"
 $touched = $false
 try {

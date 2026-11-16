@@ -11,7 +11,7 @@ exit /b %RC%
 ##PS-START
 # Exit codes: 0 geinstalleerd, 2 bestanden niet naast dit script (zip niet uitgepakt),
 # 3 Revit {{REVIT}} niet gevonden en niet doorgegaan, 4 bestand in gebruik (Revit draait),
-# 5 kopieren/controle mislukt (vorige installatie teruggezet).
+# 5 mislukt (gaat het omwisselen mis, dan wordt het teruggedraaid; de melding zegt of dat lukte).
 # Test-instellingen (omgevingsvariabelen): IBTOOLS_INSTALL_UNATTENDED=1 (geen vragen, geen pauze),
 # IBTOOLS_INSTALL_ASSUME=J (antwoord op de vraag), IBTOOLS_INSTALL_PROGRAMFILES (waar Revit staat).
 $ErrorActionPreference = 'Stop'
@@ -103,7 +103,13 @@ try {
             if ($moved[$f]) { Move-Item -LiteralPath "$final.ibtools-old" -Destination $final -Force -ErrorAction SilentlyContinue }
             Remove-Item -LiteralPath "$final.ibtools-new" -Force -ErrorAction SilentlyContinue
         }
-        Stop-Install 5 "Installeren mislukt: $why`r`nEr is niets veranderd: de vorige installatie staat er nog."
+        # Only claim "nothing changed" when every file that was moved away is really back.
+        $notBack = @($files | Where-Object { $moved[$_] -and -not (Test-Path -LiteralPath (Join-Path $target $_)) })
+        if ($notBack.Count -eq 0) {
+            Stop-Install 5 "Installeren mislukt: $why`r`nEr is niets veranderd: de vorige installatie staat er nog."
+        }
+        Stop-Install 5 ("Installeren mislukt: $why`r`nTerugzetten is niet helemaal gelukt. De vorige versie van " +
+            ($notBack -join ', ') + " staat als .ibtools-old in $target; haal daar .ibtools-old van de naam af.")
     }
     foreach ($f in $files) {
         Remove-Item -LiteralPath (Join-Path $target "$f.ibtools-old") -Force -ErrorAction SilentlyContinue

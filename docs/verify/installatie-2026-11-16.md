@@ -56,6 +56,10 @@ Gevonden bij de review en opgelost:
   bewerking had `\v` in dat pad in een stuurteken veranderd.
 - **Bestandsnamen:** de namen van de geleverde bestanden staan op één plek (`ReleaseFiles.ps1`),
   ook voor de sjablonen en de tests.
+- **Melding na terugzetten:** "Er is niets veranderd" verschijnt alleen als alles echt terug is.
+  Anders zegt de melding welk bestand nog als `.ibtools-old` in de map staat.
+- **Testslot in de Revit-test:** het slot wordt pas genomen vlak voor het deel dat het altijd
+  vrijgeeft. Daarvoor kon een fout bij het voorbereiden het slot laten staan.
 
 Na deze wijzigingen zijn de zips opnieuw gemaakt (115 unit-tests geslaagd, 4 builds zonder
 waarschuwingen) en zijn beide tests opnieuw gedraaid, ook de test in Revit.
@@ -72,8 +76,8 @@ geen Revit meer.
   Tool Failure: Revit cannot run the external application "IB Tools""**. Het journal zegt
   `API_ERROR { Starting External Application: IB Tools ... FoundationProjectionToggle.dll,
   Assembly Version: 2.1.0.0 }`. Het tabblad komt er niet.
-- **b. Dezelfde bestanden via Installeren.cmd** (twee keer gedraaid, vóór en na de reviewfixes,
-  met dezelfde uitkomst): exit 0 met "Geinstalleerd: IB Tools
+- **b. Dezelfde bestanden via Installeren.cmd** (drie keer gedraaid, vóór en na elke reviewronde,
+  steeds met dezelfde uitkomst): exit 0 met "Geinstalleerd: IB Tools
   dll-versie 2.1.0.0, gedeblokkeerd". Revit start IB Tools: de log meldt "Add-in startup completed
   successfully" en versie 2.1.0. Het journal toont `API_SUCCESS` voor de vijf knoppen (Hide,
   Paalcoördinaten, Worksets, Modelpunt, Remmingwerk) en voor het starten van IB Tools.
