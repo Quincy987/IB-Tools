@@ -4,7 +4,7 @@
     2024 and 2025 (compile only, never touches Revit) and packs per Revit version
     IBTools-v<version>-Revit<year>.zip with FoundationProjectionToggle.dll + .addin, Installeren.cmd
     (double-click: unblocks and copies to the Addins folder of that year) and LEESMIJ.txt, rendered
-    from scriptselease\*.template.*. Test the installer with tests\Release	est-install.ps1.
+    from scripts\release\*.template.*. Test the installer with tests\Release\test-install.ps1.
     Publishes NOTHING: create the GitHub release yourself afterwards.
 .PARAMETER OutDir
     Where the zips go. Default: %LOCALAPPDATA%\IBTools\release\v<version>\ (the version comes from
@@ -21,8 +21,8 @@ $ErrorActionPreference = "Stop"
 $repo = Resolve-Path (Join-Path $PSScriptRoot "..")
 . (Join-Path $PSScriptRoot "release\ReleaseFiles.ps1")
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-$manifest = Join-Path $repo "FoundationProjectionToggle.addin"
-$dllName = "FoundationProjectionToggle.dll"
+$manifest = Join-Path $repo $IBToolsAddinName
+$dllName = $IBToolsDllName
 $versions = @("2022", "2023", "2024", "2025")
 
 $version = Get-IBToolsVersion $repo
@@ -61,7 +61,7 @@ try {
         # Exactly the four files a user needs, at the top level of the zip.
         $z = [IO.Compression.ZipFile]::OpenRead($zip)
         try { $names = @($z.Entries | ForEach-Object { $_.FullName }) } finally { $z.Dispose() }
-        $wantFiles = @($dllName, (Split-Path $manifest -Leaf), "Installeren.cmd", "LEESMIJ.txt")
+        $wantFiles = @($IBToolsDllName, $IBToolsAddinName) + $IBToolsInstallFileNames
         if (Compare-Object ($names | Sort-Object) ($wantFiles | Sort-Object)) {
             throw "Revit ${v}: zip bevat $($names -join ', ') in plaats van $($wantFiles -join ', ')."
         }

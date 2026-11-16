@@ -63,16 +63,17 @@ IB Tools is één add-in (één dll, één tabblad). Elke tool staat in een eige
   `%LOCALAPPDATA%\IBTools\release\v<versie>\` met precies vier bestanden: de dll, het manifest,
   `Installeren.cmd` en `LEESMIJ.txt`. Het publiceert niets; een GitHub-release maak je daarna zelf
   (versie staat in `src/IBTools/IBTools.csproj`).
-- `Installeren.cmd` en `LEESMIJ.txt` komen uit `scripts/release/*.template.*`; `{{REVIT}}` en
-  `{{VERSION}}` vult `scripts/release/ReleaseFiles.ps1` in (alleen ASCII, CRLF). Het
+- `Installeren.cmd` en `LEESMIJ.txt` komen uit `scripts/release/*.template.*`; `{{REVIT}}`,
+  `{{VERSION}}`, `{{DLL}}` en `{{ADDIN}}` vult `scripts/release/ReleaseFiles.ps1` in (gewoon ASCII,
+  CRLF; dat bestand houdt ook de namen van de geleverde bestanden bij). Het
   installatiescript is een cmd-kop die de PowerShell onder de regel `##PS-START` uitvoert; die
   markering mag maar één keer in het bestand staan. Het kopieert naar
   `%APPDATA%\Autodesk\Revit\Addins\<jaar>\` en haalt de Windows-downloadblokkade
   (`Zone.Identifier`) eraf: zonder dat weigert Revit 2023 de dll ("External Tool Failure").
   Exitcodes: 0 klaar, 2 zip niet uitgepakt, 3 Revit-versie niet gevonden, 4 dll in gebruik (Revit
-  draait), 5 mislukt (vorige installatie teruggezet).
+  draait), 5 mislukt (wat al was omgewisseld is teruggedraaid).
 - Na een wijziging aan het installatiescript: `.\scripts\release.ps1`, dan
   `.\tests\Release\test-install.ps1` (zonder Revit, eigen APPDATA in %TEMP%: alle jaren, bijwerken,
-  Revit ontbreekt, dll in gebruik, zip niet uitgepakt) en met het testslot
+  Revit ontbreekt, dll in gebruik, fout halverwege, zip niet uitgepakt) en met het testslot
   `.\tests\Release\revit-check-install.ps1` (echte Revit 2023: geblokkeerde bestanden tegenover
   Installeren.cmd; zet daarna de oorspronkelijke bestanden in de Addins-map terug).

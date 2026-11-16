@@ -8,16 +8,16 @@ INSTALLEREN
 1. Pak deze zip uit (rechtsklik op de zip > Alles uitpakken).
 2. Sluit Revit {{REVIT}}.
 3. Dubbelklik Installeren.cmd in de uitgepakte map.
-   Vraagt Windows "Wilt u dit bestand openen?" of "Windows heeft uw pc beveiligd": klik
-   Uitvoeren (bij het tweede eerst "Meer informatie").
+   Geeft Windows een beveiligingswaarschuwing, klik Uitvoeren. Staat er "Windows heeft uw pc
+   beveiligd", klik dan "Meer informatie" en daarna "Toch uitvoeren".
 4. Start Revit {{REVIT}} en klik "Always Load" bij de vraag over IB Tools.
 
 Bijwerken naar een nieuwe versie: precies hetzelfde; de oude versie wordt vervangen.
 
 LUKT HET SCRIPT NIET? HANDMATIG
-1. Rechtsklik op FoundationProjectionToggle.dll > Eigenschappen > vink "Blokkering opheffen"
+1. Rechtsklik op {{DLL}} > Eigenschappen > vink "Blokkering opheffen"
    aan > OK. (Staat het vinkje er niet, dan is het niet nodig.)
-2. Kopieer FoundationProjectionToggle.dll en FoundationProjectionToggle.addin naar
+2. Kopieer {{DLL}} en {{ADDIN}} naar
    %APPDATA%\Autodesk\Revit\Addins\{{REVIT}}\
    (plak dat pad in de adresbalk van de Verkenner).
 3. Start Revit {{REVIT}} en klik "Always Load".

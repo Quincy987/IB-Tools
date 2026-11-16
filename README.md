@@ -27,9 +27,9 @@ testverslag. Demo-video van Worksets, Modelpunt en Paalcoördinaten:
    .NET Framework 4.8-builds, 2025 is een .NET 8-build; ze zijn niet uitwisselbaar.
 2. Pak de zip uit (rechtsklik > *Alles uitpakken*) en sluit Revit.
 3. Dubbelklik **`Installeren.cmd`** in de uitgepakte map. Het zet de add-in in
-   `%APPDATA%\Autodesk\Revit\Addins\<jaar>\` en haalt de Windows-downloadblokkade eraf. Vraagt
-   Windows of je het bestand wilt openen (of "Windows heeft uw pc beveiligd": eerst *Meer
-   informatie*), klik *Uitvoeren*.
+   `%APPDATA%\Autodesk\Revit\Addins\<jaar>\` en haalt de Windows-downloadblokkade eraf. Geeft
+   Windows een beveiligingswaarschuwing, klik *Uitvoeren*; bij "Windows heeft uw pc beveiligd"
+   eerst *Meer informatie* en dan *Toch uitvoeren*.
 4. Start Revit en klik **Always Load** bij de vraag over de add-in *IB Tools*
    (Ingenieursbureau Gemeente Amsterdam).
 
@@ -107,9 +107,10 @@ laadt de add-in dubbel of weigert hij het dubbele ClientId. Daarvoor aan te pass
 
 - `AssemblyName` en het opt-in deploydoel (`DeployAddin`) in `src/IBTools/IBTools.csproj`;
 - de naam van het manifest en zijn `<Assembly>`;
-- `$DllName`/`$ManifestName` in `build.ps1` en `$dllName`/`$manifest` in `scripts/release.ps1`;
-- de bestandsnamen in `scripts/release/Installeren.template.cmd` (`$files`, plus het opruimen van
-  de oude namen) en `LEESMIJ.template.txt`, en in `tests/Release/*.ps1`;
+- `$DllName`/`$ManifestName` in `build.ps1`;
+- `$IBToolsDllName`/`$IBToolsAddinName` in `scripts/release/ReleaseFiles.ps1` (release.ps1, de
+  installatiesjablonen via `{{DLL}}`/`{{ADDIN}}` en `tests/Release` nemen ze daaruit over), plus in
+  `Installeren.template.cmd` het opruimen van de oude namen;
 - de oude ontwikkel-add-in `FoundationProjectionToggle.DevTools.dll` op de ontwikkel-pc verwijst
   naar de assemblynaam `FoundationProjectionToggle`; na hernoemen werkt die niet meer, en dan kan
   ook `src/IBTools/Shared/LegacyLogger.cs` weg.

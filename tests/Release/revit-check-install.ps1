@@ -20,6 +20,7 @@ $ErrorActionPreference = "Stop"
 $repo = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 . (Join-Path $repo "scripts\ibtools-common.ps1")
 . (Join-Path $repo "scripts\release\ReleaseFiles.ps1")
+. (Join-Path $PSScriptRoot "ReleaseTestHelpers.ps1")
 $version = Get-IBToolsVersion $repo
 if (-not $ZipDir) { $ZipDir = Join-Path $env:LOCALAPPDATA "IBTools\release\v$version" }
 $zip = Join-Path $ZipDir "IBTools-v$version-Revit2023.zip"
@@ -27,7 +28,7 @@ if (-not (Test-Path $zip)) { throw "Zip niet gevonden: $zip (eerst .\scripts\rel
 $revitExe = "C:\Program Files\Autodesk\Revit 2023\Revit.exe"
 $addins = Join-Path $env:APPDATA "Autodesk\Revit\Addins\2023"
 $journals = Join-Path $env:LOCALAPPDATA "Autodesk\Revit\Autodesk Revit 2023\Journals"
-$files = @("FoundationProjectionToggle.dll", "FoundationProjectionToggle.addin")
+$files = @($IBToolsDllName, $IBToolsAddinName)
 $owner = (Get-IBToolsOwner) -replace '\s+', '_'
 $work = Join-Path $env:LOCALAPPDATA "IBTools\test\install-check"
 $report = New-Object System.Collections.ArrayList
@@ -94,7 +95,7 @@ function Invoke-Scenario([string]$Name, [scriptblock]$Prepare) {
     Write-Host "Scenario ${Name}:" -ForegroundColor Yellow
     foreach ($f in $files) { Remove-Item -LiteralPath (Join-Path $addins $f) -Force -ErrorAction SilentlyContinue }
     & $Prepare
-    $blocked = @($files | Where-Object { Get-Item -LiteralPath (Join-Path $addins $_) -Stream Zone.Identifier -ErrorAction SilentlyContinue })
+    $blocked = @($files | Where-Object { Test-IBToolsBlocked (Join-Path $addins $_) })
     $state = if ($blocked.Count) { "geblokkeerd: " + ($blocked -join ", ") } else { "niet geblokkeerd" }
     Write-Host "  Addins\2023: $state"
 
@@ -143,7 +144,7 @@ function Invoke-Scenario([string]$Name, [scriptblock]$Prepare) {
         Where-Object { $_.LastWriteTime -gt $started } | Sort-Object LastWriteTime | Select-Object -Last 1
     $jl = @()
     if ($journal) {
-        $jl = @(Select-String -LiteralPath $journal.FullName -Pattern "FoundationProjectionToggle\.dll|0x80131515|loadFromRemoteSources|network location" |
+        $jl = @(Select-String -LiteralPath $journal.FullName -Pattern "$([regex]::Escape($IBToolsDllName))|0x80131515|loadFromRemoteSources|network location" |
             ForEach-Object { $_.Line.Trim() } | Select-Object -First 6)
     }
     $entry = [pscustomobject]@{
@@ -156,21 +157,19 @@ function Invoke-Scenario([string]$Name, [scriptblock]$Prepare) {
 }
 
 $backup = Join-Path $work "backup"
+$touched = $false
 try {
+    # Another Revit 2023 (not ours) holding the dll: leave everything alone.
+    if (Test-IBToolsFileLocked (Join-Path $addins $files[0])) { throw "De dll in Addins\2023 is in gebruik door een andere Revit: niets gedaan." }
     if (Test-Path $work) { Remove-Item -Recurse -Force $work }
     New-Item -ItemType Directory -Force $backup | Out-Null
     foreach ($f in $files) {
         $p = Join-Path $addins $f
         if (Test-Path -LiteralPath $p) { Copy-Item -LiteralPath $p -Destination $backup }
     }
-    if (Test-IBToolsFileLocked (Join-Path $addins $files[0])) { throw "De dll in Addins\2023 is in gebruik door een andere Revit: niets gedaan." }
+    $src = Expand-IBToolsDownload $zip (Join-Path $work "Downloads\IBTools-v$version-Revit2023")
 
-    $src = Join-Path $work "Downloads\IBTools-v$version-Revit2023"
-    Expand-Archive -LiteralPath $zip -DestinationPath $src
-    Get-ChildItem -LiteralPath $src -File | ForEach-Object {
-        Set-Content -LiteralPath $_.FullName -Stream "Zone.Identifier" -Value "[ZoneTransfer]`r`nZoneId=3"
-    }
-
+    $touched = $true
     Invoke-Scenario "a (gedownloade bestanden zo in de Addins-map)" {
         foreach ($f in $files) { Copy-Item -LiteralPath (Join-Path $src $f) -Destination $addins }   # keeps the stream
     }
@@ -178,19 +177,25 @@ try {
         $env:IBTOOLS_INSTALL_UNATTENDED = "1"
         try {
             $out = & cmd.exe /c ('""{0}""' -f (Join-Path $src "Installeren.cmd")) 2>&1 | Out-String
-            Write-Host ("  Installeren.cmd exit {0}" -f $LASTEXITCODE)
+            $rc = $LASTEXITCODE
+            Write-Host ("  Installeren.cmd exit {0}" -f $rc)
             Write-Host (($out -split "`r?`n" | Where-Object { $_.Trim() } | ForEach-Object { "    | $_" }) -join "`n") -ForegroundColor Gray
-            if ($LASTEXITCODE -ne 0) { throw "Installeren.cmd exit $LASTEXITCODE" }
+            if ($rc -ne 0) { throw "Installeren.cmd exit $rc" }
         } finally { Remove-Item Env:\IBTOOLS_INSTALL_UNATTENDED -ErrorAction SilentlyContinue }
     }
 }
 finally {
     & .\scripts\revit-lock.ps1 release
-    foreach ($f in $files) {
-        $b = Join-Path $backup $f
-        if (Test-Path -LiteralPath $b) { Copy-Item -LiteralPath $b -Destination $addins -Force }
+    if ($touched) {
+        # Back to exactly what was there: the backed-up files, and nothing that was not there before.
+        foreach ($f in $files) {
+            $b = Join-Path $backup $f
+            $p = Join-Path $addins $f
+            if (Test-Path -LiteralPath $b) { Copy-Item -LiteralPath $b -Destination $addins -Force }
+            else { Remove-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue }
+        }
+        Write-Host "Addins\2023: oorspronkelijke IB Tools-bestanden teruggezet." -ForegroundColor Gray
     }
-    Write-Host "Addins\2023: oorspronkelijke IB Tools-bestanden teruggezet." -ForegroundColor Gray
     Remove-Item Env:\IBTOOLS_DEBUG -ErrorAction SilentlyContinue
     Pop-Location
 }
@@ -198,6 +203,7 @@ finally {
 $report | Format-List | Out-Host
 $a = $report | Where-Object { $_.Scenario -like "a*" }
 $b = $report | Where-Object { $_.Scenario -like "b*" }
+if ($a) { Write-Host ("Zonder deblokkeren: IB Tools gestart = {0}" -f $a.IBToolsStarted) }
 if ($b -and $b.IBToolsStarted) { Write-Host "Installeren.cmd in Revit 2023: IB Tools start." -ForegroundColor Green; exit 0 }
 Write-Host "Installeren.cmd in Revit 2023: IB Tools start NIET." -ForegroundColor Red
 exit 1

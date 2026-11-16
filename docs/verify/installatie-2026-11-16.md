@@ -16,7 +16,7 @@ IBTools-v2.1.0-Revit2024.zip 1064 KB   (.NETFramework,Version=v4.8, dll 2.1.0.0)
 IBTools-v2.1.0-Revit2025.zip 1065 KB   (.NETCoreApp,Version=v8.0, dll 2.1.0.0)
 ```
 
-## 2. Installeren.cmd zonder Revit (`tests/Release/test-install.ps1`): 43/43
+## 2. Installeren.cmd zonder Revit (`tests/Release/test-install.ps1`): 51/51
 
 De bestanden uit elke zip zijn gemarkeerd als download (`Zone.Identifier`, ZoneId=3), zoals
 Windows doet bij het uitpakken van een gedownloade zip. Uitgepakt in een pad met spaties,
@@ -24,7 +24,8 @@ haakjes en een `&` (`Mijn downloads 2023\IBTools (1) & co`). Elke run heeft een 
 en een nagemaakte Program Files in %TEMP%. Het script is gestart zoals de Verkenner het doet
 (`cmd.exe /c ""<pad>""`).
 
-- **2022, 2023, 2024:** .NET 4.8 weigert de gemarkeerde dll (LoadFrom geeft een fout). Na het
+- **Per zip:** precies de vier bestanden, alle vier gemarkeerd als download.
+- **2022, 2023, 2024:** .NET 4.8 weigert de gemarkeerde dll (`FileLoadException`). Na het
   installeren staan beide bestanden in `Addins\<jaar>`, zonder blokkade en gelijk aan de zip. Er
   blijven geen restbestanden achter. De geïnstalleerde dll laadt wél in .NET 4.8. Een tweede run
   (bijwerken) eindigt met exit 0.
@@ -34,12 +35,30 @@ en een nagemaakte Program Files in %TEMP%. Het script is gestart zoals de Verken
   en geïnstalleerd.
 - **dll in gebruik** (een .NET 4.8-proces heeft hem geladen, zoals een draaiende Revit): exit 4
   met "Sluit Revit 2023". Bestanden en tijdstempel zijn onveranderd en er is niets bijgekomen.
+- **Fout halverwege** (de dll is al omgewisseld als de stap voor het manifest mislukt): exit 5 met
+  "Er is niets veranderd". De vorige dll en het vorige manifest staan er weer en er zijn geen
+  restbestanden.
 - **Zip niet uitgepakt** (alleen het cmd-bestand in een map): exit 2 met "Pak eerst de zip uit".
 
 Gevonden en opgelost tijdens het testen: de markering `##PS-START` stond ook in een
 commentaarregel bovenin, waardoor PowerShell op de verkeerde plek begon. De markering is uit het
 commentaar gehaald, en `ReleaseFiles.ps1` weigert nu een cmd-bestand waarin hij niet precies één
 keer staat.
+
+Gevonden bij de review en opgelost:
+
+- **Terugzetten:** als het verplaatsen van een bestaand bestand mislukte, verwijderde het
+  terugzetten dat bestand. Nu wordt alleen teruggedraaid wat echt verplaatst of neergezet is.
+  Ook het kopiëren valt nu onder het terugzetten. Dit wordt getest met "Fout halverwege".
+- **PowerShell:** het script roept PowerShell aan met het volledige pad
+  (`%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe`), dus niet meer via PATH.
+- **Controle op tekens:** `ReleaseFiles.ps1` weigert nu ook stuurtekens in de sjablonen. Een
+  bewerking had `\v` in dat pad in een stuurteken veranderd.
+- **Bestandsnamen:** de namen van de geleverde bestanden staan op één plek (`ReleaseFiles.ps1`),
+  ook voor de sjablonen en de tests.
+
+Na deze wijzigingen zijn de zips opnieuw gemaakt (115 unit-tests geslaagd, 4 builds zonder
+waarschuwingen) en zijn beide tests opnieuw gedraaid, ook de test in Revit.
 
 ## 3. In Revit 2023 (`tests/Release/revit-check-install.ps1`, met testslot)
 
@@ -53,7 +72,8 @@ geen Revit meer.
   Tool Failure: Revit cannot run the external application "IB Tools""**. Het journal zegt
   `API_ERROR { Starting External Application: IB Tools ... FoundationProjectionToggle.dll,
   Assembly Version: 2.1.0.0 }`. Het tabblad komt er niet.
-- **b. Dezelfde bestanden via Installeren.cmd:** exit 0 met "Geinstalleerd: IB Tools
+- **b. Dezelfde bestanden via Installeren.cmd** (twee keer gedraaid, vóór en na de reviewfixes,
+  met dezelfde uitkomst): exit 0 met "Geinstalleerd: IB Tools
   dll-versie 2.1.0.0, gedeblokkeerd". Revit start IB Tools: de log meldt "Add-in startup completed
   successfully" en versie 2.1.0. Het journal toont `API_SUCCESS` voor de vijf knoppen (Hide,
   Paalcoördinaten, Worksets, Modelpunt, Remmingwerk) en voor het starten van IB Tools.

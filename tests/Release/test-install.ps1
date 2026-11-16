@@ -6,7 +6,8 @@
     unpacked. Checks per Revit year: installed, unblocked, identical to the zip, no leftovers, a
     second run (update) works; for the net48 years also that .NET Framework refuses LoadFrom on the
     marked dll before and accepts the installed one. Once: Revit not installed (exit 3 / J goes on),
-    dll in use (exit 4, nothing touched), zip not unpacked (exit 2).
+    dll in use (exit 4, nothing touched), a failure halfway (exit 5, previous install back), zip not
+    unpacked (exit 2).
 .PARAMETER ZipDir
     Folder with IBTools-v<version>-Revit<year>.zip. Default: the output of scripts\release.ps1.
 .EXAMPLE
@@ -16,11 +17,12 @@ param([string]$ZipDir)
 $ErrorActionPreference = "Stop"
 $repo = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 . (Join-Path $repo "scripts\release\ReleaseFiles.ps1")
+. (Join-Path $PSScriptRoot "ReleaseTestHelpers.ps1")
 $version = Get-IBToolsVersion $repo
 if (-not $ZipDir) { $ZipDir = Join-Path $env:LOCALAPPDATA "IBTools\release\v$version" }
 $years = @("2022", "2023", "2024", "2025")
-$dllName = "FoundationProjectionToggle.dll"
-$addinName = "FoundationProjectionToggle.addin"
+$dllName = $IBToolsDllName
+$addinName = $IBToolsAddinName
 $work = Join-Path $env:TEMP ("ibtools-install-test-" + [guid]::NewGuid().ToString("N").Substring(0, 8))
 New-Item -ItemType Directory -Force $work | Out-Null
 
@@ -44,24 +46,39 @@ function Invoke-Installer([string]$Cmd, [string]$AppData, [string]$ProgramFiles,
     $p = [System.Diagnostics.Process]::Start($psi)
     $p.StandardInput.Close()                       # a question that slips through reads EOF instead of hanging
     $out = $p.StandardOutput.ReadToEndAsync(); $err = $p.StandardError.ReadToEndAsync()
-    if (-not $p.WaitForExit(60000)) { $p.Kill(); return [pscustomobject]@{ Code = -1; Output = "TIMEOUT" } }
+    if (-not $p.WaitForExit(60000)) {
+        & taskkill.exe /T /F /PID $p.Id 2>&1 | Out-Null   # cmd and the powershell it started
+        return [pscustomobject]@{ Code = -1; Output = "TIMEOUT" }
+    }
     $p.WaitForExit()
     return [pscustomobject]@{ Code = $p.ExitCode; Output = ($out.Result + $err.Result) }
 }
 
-function Set-Downloaded([string]$Path) {
-    Set-Content -LiteralPath $Path -Stream "Zone.Identifier" -Value "[ZoneTransfer]`r`nZoneId=3"
+function Start-PowerShell48([string]$Script) {
+    # A fresh Windows PowerShell 5.1 = .NET Framework 4.8, the same loader rules as Revit 2022-2024.
+    $psi = New-Object System.Diagnostics.ProcessStartInfo "powershell.exe",
+        ("-NoProfile -EncodedCommand " + [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($Script)))
+    $psi.UseShellExecute = $false; $psi.RedirectStandardOutput = $true
+    # Its stderr (progress records as CLIXML) is swallowed, so it does not end up in our own output.
+    $psi.RedirectStandardError = $true
+    $p = [System.Diagnostics.Process]::Start($psi)
+    [void]$p.StandardError.ReadToEndAsync()
+    return $p
 }
-function Test-Blocked([string]$Path) {
-    return [bool](Get-Item -LiteralPath $Path -Stream "Zone.Identifier" -ErrorAction SilentlyContinue)
+function Get-LoadScript([string]$Dll) {
+    # Sets $r to "LOADED" or "REFUSED <exception>" and writes it to stdout at once.
+    return "`$r = try { [void][Reflection.Assembly]::LoadFrom($(ConvertTo-IBToolsQuoted $Dll)); 'LOADED' } " +
+        "catch { `$e = `$_.Exception; if (`$e.InnerException) { `$e = `$e.InnerException }; 'REFUSED ' + `$e.GetType().Name }; " +
+        "[Console]::Out.WriteLine(`$r); [Console]::Out.Flush()"
 }
 function Test-LoadFrom([string]$Dll) {
-    # A fresh Windows PowerShell 5.1 = .NET Framework 4.8, the same loader rules as Revit 2022-2024.
-    $code = "try { [void][Reflection.Assembly]::LoadFrom('$Dll'); 'LOADED' } catch { 'REFUSED ' + `$_.Exception.GetType().Name }"
-    return (& powershell.exe -NoProfile -Command $code | Out-String).Trim()
+    $p = Start-PowerShell48 (Get-LoadScript $Dll)
+    $line = $p.StandardOutput.ReadToEnd().Trim()
+    $p.WaitForExit()
+    return $line
 }
-function Get-Leftovers([string]$Dir) {
-    return @(Get-ChildItem -LiteralPath $Dir -Filter "*.ibtools-*" -ErrorAction SilentlyContinue | ForEach-Object { $_.Name })
+function Get-Leftovers([string]$Dir, [string]$Filter = "*.ibtools-*") {
+    return @(Get-ChildItem -LiteralPath $Dir -Filter $Filter -ErrorAction SilentlyContinue | ForEach-Object { $_.Name })
 }
 function New-FakeProgramFiles([string]$Dir, [string[]]$Revits) {
     New-Item -ItemType Directory -Force $Dir | Out-Null
@@ -73,13 +90,7 @@ function New-FakeProgramFiles([string]$Dir, [string[]]$Revits) {
     return $Dir
 }
 function Expand-Download([string]$Year, [string]$Name) {
-    # Unpack like a user would, then mark every file as downloaded.
-    $zip = Join-Path $ZipDir "IBTools-v$version-Revit$Year.zip"
-    if (-not (Test-Path $zip)) { throw "Zip niet gevonden: $zip (eerst .\scripts\release.ps1)" }
-    $dir = Join-Path $work $Name
-    Expand-Archive -LiteralPath $zip -DestinationPath $dir
-    Get-ChildItem -LiteralPath $dir -File | ForEach-Object { Set-Downloaded $_.FullName }
-    return $dir
+    return Expand-IBToolsDownload (Join-Path $ZipDir "IBTools-v$version-Revit$Year.zip") (Join-Path $work $Name)
 }
 
 Write-Host "Installeren.cmd testen: v$version, zips uit $ZipDir" -ForegroundColor Cyan
@@ -92,7 +103,10 @@ try {
         $appData = Join-Path $work "appdata-$y"
         $target = Join-Path $appData "Autodesk\Revit\Addins\$y"
         $net48 = [int]$y -lt 2025
-        Check "$y alle bestanden uit de zip gemarkeerd als download" (@(Get-ChildItem -LiteralPath $src -File | Where-Object { -not (Test-Blocked $_.FullName) }).Count -eq 0) ""
+        $zipNames = @(Get-ChildItem -LiteralPath $src -File | ForEach-Object { $_.Name } | Sort-Object)
+        $wantNames = @((@($dllName, $addinName) + $IBToolsInstallFileNames) | Sort-Object)
+        Check "$y zip bevat precies de vier bestanden" (($zipNames -join ",") -eq ($wantNames -join ",")) ($zipNames -join ", ")
+        Check "$y alle bestanden uit de zip gemarkeerd als download" (@(Get-ChildItem -LiteralPath $src -File | Where-Object { -not (Test-IBToolsBlocked $_.FullName) }).Count -eq 0) ""
         if ($net48) {
             $before = Test-LoadFrom (Join-Path $src $dllName)
             Check "$y gemarkeerde dll wordt geweigerd door .NET 4.8" ($before -like "REFUSED*") $before
@@ -100,10 +114,10 @@ try {
         $r = Invoke-Installer (Join-Path $src "Installeren.cmd") $appData $pf ""
         Check "$y installeren: exit 0" ($r.Code -eq 0) "exit $($r.Code)"
         if ($r.Code -ne 0) { Write-Host $r.Output }
-        Check "$y uitvoer noemt Revit $y en 'Geinstalleerd'" (($r.Output -match "Revit $y gevonden") -and ($r.Output -match "Geinstalleerd: IB Tools dll-versie $([regex]::Escape($version))")) ""
+        Check "$y uitvoer noemt Revit $y en de versie" (($r.Output -match "Revit $y gevonden") -and ($r.Output -match "Geinstalleerd: IB Tools dll-versie $([regex]::Escape($version))")) ""
         foreach ($f in @($dllName, $addinName)) {
             $t = Join-Path $target $f
-            $ok = (Test-Path -LiteralPath $t) -and (-not (Test-Blocked $t)) -and
+            $ok = (Test-Path -LiteralPath $t) -and (-not (Test-IBToolsBlocked $t)) -and
                 ((Get-FileHash -LiteralPath $t).Hash -eq (Get-FileHash -LiteralPath (Join-Path $src $f)).Hash)
             Check "$y $f staat er, gedeblokkeerd, gelijk aan de zip" $ok ""
         }
@@ -119,7 +133,9 @@ try {
     Write-Host "Bijzondere gevallen (zip van Revit 2023):" -ForegroundColor Yellow
     $src = Expand-Download "2023" "special"
     $cmd = Join-Path $src "Installeren.cmd"
+    $pf23 = New-FakeProgramFiles (Join-Path $work "pf-2023") @("2023")
 
+    # Revit 2023 not installed (only 2024): asks; no answer or N stops, J goes on.
     $pf24 = New-FakeProgramFiles (Join-Path $work "pf-only2024") @("2024")
     $appData = Join-Path $work "appdata-norevit"
     $dll = Join-Path $appData "Autodesk\Revit\Addins\2023\$dllName"
@@ -132,29 +148,52 @@ try {
     Check "Revit 2023 ontbreekt, antwoord J: exit 0, geinstalleerd" (($r.Code -eq 0) -and (Test-Path $dll)) "exit $($r.Code)"
 
     # In use: a .NET Framework process holds the installed dll loaded, like a running Revit does.
-    $pf23 = New-FakeProgramFiles (Join-Path $work "pf-2023") @("2023")
     $appData = Join-Path $work "appdata-inuse"
     $target = Join-Path $appData "Autodesk\Revit\Addins\2023"
     $dll = Join-Path $target $dllName
     $r = Invoke-Installer $cmd $appData $pf23 ""
-    Check "in-gebruik-test: eerste installatie exit 0" ($r.Code -eq 0) "exit $($r.Code)"
-    $stamp = (Get-Item -LiteralPath $dll).LastWriteTimeUtc
-    $listing = (Get-ChildItem -LiteralPath $target | ForEach-Object { $_.Name }) -join ","
-    $holderScript = "[void][Reflection.Assembly]::LoadFrom('$dll'); [Console]::Out.WriteLine('LOADED'); [Console]::Out.Flush(); Start-Sleep -Seconds 120"
-    $hpsi = New-Object System.Diagnostics.ProcessStartInfo "powershell.exe", ('-NoProfile -Command "{0}"' -f $holderScript)
-    $hpsi.UseShellExecute = $false; $hpsi.RedirectStandardOutput = $true
-    $holder = [System.Diagnostics.Process]::Start($hpsi)
-    try {
-        $line = $holder.StandardOutput.ReadLine()
-        Check "dll geladen door een .NET 4.8-testproces" ($line -eq "LOADED") $line
-        $r = Invoke-Installer $cmd $appData $pf23 ""
-        Check "dll in gebruik: exit 4 met 'Sluit Revit 2023'" (($r.Code -eq 4) -and ($r.Output -match "Sluit Revit 2023")) "exit $($r.Code)"
-        $listingAfter = (Get-ChildItem -LiteralPath $target | ForEach-Object { $_.Name }) -join ","
-        Check "dll in gebruik: niets aangeraakt" ((((Get-Item -LiteralPath $dll).LastWriteTimeUtc) -eq $stamp) -and ($listingAfter -eq $listing)) $listingAfter
+    Check "in gebruik: eerste installatie exit 0" ($r.Code -eq 0) "exit $($r.Code)"
+    if ($r.Code -eq 0) {
+        $stamp = (Get-Item -LiteralPath $dll).LastWriteTimeUtc
+        $listing = (Get-ChildItem -LiteralPath $target | ForEach-Object { $_.Name }) -join ","
+        $holder = Start-PowerShell48 ((Get-LoadScript $dll) + "; Start-Sleep -Seconds 120")
+        try {
+            $line = $holder.StandardOutput.ReadLine()
+            Check "in gebruik: dll geladen door een .NET 4.8-testproces" ($line -eq "LOADED") $line
+            $r = Invoke-Installer $cmd $appData $pf23 ""
+            Check "in gebruik: exit 4 met 'Sluit Revit 2023'" (($r.Code -eq 4) -and ($r.Output -match "Sluit Revit 2023")) "exit $($r.Code)"
+            $listingAfter = (Get-ChildItem -LiteralPath $target | ForEach-Object { $_.Name }) -join ","
+            Check "in gebruik: niets aangeraakt" ((((Get-Item -LiteralPath $dll).LastWriteTimeUtc) -eq $stamp) -and ($listingAfter -eq $listing)) $listingAfter
+        }
+        finally {
+            if (-not $holder.HasExited) { $holder.Kill() }     # our own test process, never Revit
+            $holder.WaitForExit()
+        }
     }
-    finally {
-        if (-not $holder.HasExited) { $holder.Kill() }     # our own test process, never Revit
-        $holder.WaitForExit()
+
+    # Failure halfway: the dll is already swapped when the manifest step fails (its .ibtools-old
+    # slot is held open). Everything must be back as it was.
+    $appData = Join-Path $work "appdata-rollback"
+    $target = Join-Path $appData "Autodesk\Revit\Addins\2023"
+    $r = Invoke-Installer $cmd $appData $pf23 ""
+    Check "halverwege fout: eerste installatie exit 0" ($r.Code -eq 0) "exit $($r.Code)"
+    if ($r.Code -eq 0) {
+        $dll = Join-Path $target $dllName
+        $addin = Join-Path $target $addinName
+        Set-Content -LiteralPath $dll -Value "VORIGE-DLL"                  # recognisable "previous version"
+        $addinHash = (Get-FileHash -LiteralPath $addin).Hash
+        $slot = "$addin.ibtools-old"
+        Set-Content -LiteralPath $slot -Value "bezet"
+        $handle = [IO.File]::Open($slot, 'Open', 'Read', 'None')
+        try {
+            $r = Invoke-Installer $cmd $appData $pf23 ""
+            Check "halverwege fout: exit 5 met 'niets veranderd'" (($r.Code -eq 5) -and ($r.Output -match "niets veranderd")) "exit $($r.Code)"
+            $dllBack = (Get-Content -LiteralPath $dll -Raw).Trim() -eq "VORIGE-DLL"
+            Check "halverwege fout: vorige dll en manifest terug" ($dllBack -and ((Get-FileHash -LiteralPath $addin).Hash -eq $addinHash)) ""
+            $left = @(Get-Leftovers $target "*.ibtools-new") + @(Get-Leftovers $target "$dllName.ibtools-old")
+            Check "halverwege fout: geen restbestanden" ($left.Count -eq 0) ($left -join ", ")
+        }
+        finally { $handle.Close() }
     }
 
     # Zip not unpacked: Explorer extracts only the clicked .cmd to a temp folder.

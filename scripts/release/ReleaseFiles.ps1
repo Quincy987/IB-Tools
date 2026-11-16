@@ -1,9 +1,15 @@
 <#
 .SYNOPSIS
-    Shared by scripts\release.ps1 and tests\Release\test-install.ps1: reads the IB Tools version
-    and renders Installeren.cmd + LEESMIJ.txt for one Revit year from the templates next to this file.
+    Shared by scripts\release.ps1 and tests\Release\*.ps1 (dot-source it): the names of the shipped
+    files, the IB Tools version, and rendering Installeren.cmd + LEESMIJ.txt for one Revit year from
+    the templates next to this file.
 #>
 
+# The shipped files keep their old names on purpose (README "Hernoemen"). The templates get them
+# through {{DLL}} / {{ADDIN}}, so a rename changes them here and not in the templates.
+$IBToolsDllName = "FoundationProjectionToggle.dll"
+$IBToolsAddinName = "FoundationProjectionToggle.addin"
+$IBToolsInstallFileNames = @("Installeren.cmd", "LEESMIJ.txt")
 $script:IBToolsReleaseTemplates = $PSScriptRoot
 
 function Get-IBToolsVersion([string]$Repo) {
@@ -15,20 +21,23 @@ function Get-IBToolsVersion([string]$Repo) {
 }
 
 function New-IBToolsInstallFiles([string]$RevitVersion, [string]$Version, [string]$OutDir) {
-    # Returns the paths of the rendered Installeren.cmd and LEESMIJ.txt (CRLF, ASCII only).
+    # Returns the paths of the rendered Installeren.cmd and LEESMIJ.txt (CRLF, plain ASCII).
     New-Item -ItemType Directory -Force $OutDir | Out-Null
     $out = @()
-    foreach ($pair in @(@("Installeren.template.cmd", "Installeren.cmd"), @("LEESMIJ.template.txt", "LEESMIJ.txt"))) {
-        $text = [IO.File]::ReadAllText((Join-Path $script:IBToolsReleaseTemplates $pair[0]))
-        $text = $text.Replace("{{REVIT}}", $RevitVersion).Replace("{{VERSION}}", $Version)
+    foreach ($name in $IBToolsInstallFileNames) {
+        $template = [IO.Path]::GetFileNameWithoutExtension($name) + ".template" + [IO.Path]::GetExtension($name)
+        $text = [IO.File]::ReadAllText((Join-Path $script:IBToolsReleaseTemplates $template))
+        $text = $text.Replace("{{REVIT}}", $RevitVersion).Replace("{{VERSION}}", $Version).
+            Replace("{{DLL}}", $IBToolsDllName).Replace("{{ADDIN}}", $IBToolsAddinName)
         $text = ($text -replace "`r?`n", "`r`n")
-        if ($text -match "\{\{") { throw "$($pair[0]): placeholder niet ingevuld." }
+        if ($text -match "\{\{") { throw "${template}: placeholder niet ingevuld." }
+        # cmd and Notepad show anything else wrongly; control characters are typos (e.g. a "\v" escape).
+        if ($text -match "[^\x20-\x7E\r\n\t]") { throw "${template}: bevat tekens buiten gewoon ASCII." }
         # The cmd header runs everything after the FIRST "##PS-START": it may occur only once.
-        if ($pair[1] -eq "Installeren.cmd" -and ([regex]::Matches($text, "##PS-START")).Count -ne 1) {
-            throw "$($pair[0]): de markering ##PS-START moet precies een keer voorkomen."
+        if ($name -eq "Installeren.cmd" -and ([regex]::Matches($text, "##PS-START")).Count -ne 1) {
+            throw "${template}: de markering ##PS-START moet precies een keer voorkomen."
         }
-        if ($text -match "[^\x00-\x7F]") { throw "$($pair[0]): bevat niet-ASCII-tekens (cmd en Kladblok tonen die verkeerd)." }
-        $path = Join-Path $OutDir $pair[1]
+        $path = Join-Path $OutDir $name
         [IO.File]::WriteAllText($path, $text, [Text.Encoding]::ASCII)
         $out += $path
     }

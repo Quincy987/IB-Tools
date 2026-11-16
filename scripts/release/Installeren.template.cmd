@@ -1,10 +1,10 @@
 @echo off
 rem IB Tools {{VERSION}} voor Revit {{REVIT}} - installatie. Dubbelklik dit bestand.
-rem Kopieert FoundationProjectionToggle.dll en .addin naar %APPDATA%\Autodesk\Revit\Addins\{{REVIT}}\
+rem Kopieert {{DLL}} en {{ADDIN}} naar %APPDATA%\Autodesk\Revit\Addins\{{REVIT}}\
 rem en haalt de Windows-downloadblokkade eraf. Alles onder de PS-START-regel is PowerShell.
 setlocal
 set "IBT_SELF=%~f0"
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$s=[IO.File]::ReadAllText($env:IBT_SELF); iex $s.Substring($s.IndexOf('#'+'#PS-START'))"
+"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -Command "$s=[IO.File]::ReadAllText($env:IBT_SELF); iex $s.Substring($s.IndexOf('#'+'#PS-START'))"
 set "RC=%ERRORLEVEL%"
 if not "%IBTOOLS_INSTALL_UNATTENDED%"=="1" if not "%IBTOOLS_INSTALL_NOPAUSE%"=="1" pause
 exit /b %RC%
@@ -17,7 +17,7 @@ exit /b %RC%
 $ErrorActionPreference = 'Stop'
 $revit = '{{REVIT}}'
 $version = '{{VERSION}}'
-$files = @('FoundationProjectionToggle.dll', 'FoundationProjectionToggle.addin')
+$files = @('{{DLL}}', '{{ADDIN}}')   # de dll eerst: die wordt ook als eerste omgewisseld
 $unattended = ($env:IBTOOLS_INSTALL_UNATTENDED -eq '1')
 
 function Say([string]$text, [string]$color = 'Gray') { Write-Host $text -ForegroundColor $color }
@@ -77,34 +77,33 @@ try {
         }
     }
 
-    # 5. Kopieren naast de oude bestanden, deblokkeren, dan pas omwisselen (bij een fout terugzetten).
-    foreach ($f in $files) {
-        $new = Join-Path $target "$f.ibtools-new"
-        Copy-Item -LiteralPath (Join-Path $src $f) -Destination $new -Force
-        Unblock-File -LiteralPath $new
-    }
-    $hadOld = @{}
+    # 5. Eerst naast de oude bestanden kopieren en deblokkeren, dan pas omwisselen. Gaat er
+    #    onderweg iets mis, dan komt alles terug zoals het was: alleen wat echt verplaatst is
+    #    ($moved) of neergezet ($placed) wordt teruggedraaid.
+    $moved = @{}
+    $placed = @{}
     try {
+        foreach ($f in $files) {
+            $new = Join-Path $target "$f.ibtools-new"
+            Copy-Item -LiteralPath (Join-Path $src $f) -Destination $new -Force
+            Unblock-File -LiteralPath $new
+        }
         foreach ($f in $files) {
             $final = Join-Path $target $f
             $old = "$final.ibtools-old"
             if (Test-Path -LiteralPath $old) { Remove-Item -LiteralPath $old -Force }
-            $hadOld[$f] = Test-Path -LiteralPath $final
-            if ($hadOld[$f]) { Move-Item -LiteralPath $final -Destination $old }
-            Move-Item -LiteralPath "$final.ibtools-new" -Destination $final
+            if (Test-Path -LiteralPath $final) { Move-Item -LiteralPath $final -Destination $old; $moved[$f] = $true }
+            Move-Item -LiteralPath "$final.ibtools-new" -Destination $final; $placed[$f] = $true
         }
     } catch {
         $why = $_.Exception.Message
         foreach ($f in $files) {
             $final = Join-Path $target $f
-            $old = "$final.ibtools-old"
-            if ($hadOld.ContainsKey($f)) {
-                if (Test-Path -LiteralPath $final) { Remove-Item -LiteralPath $final -Force -ErrorAction SilentlyContinue }
-                if ($hadOld[$f] -and (Test-Path -LiteralPath $old)) { Move-Item -LiteralPath $old -Destination $final -ErrorAction SilentlyContinue }
-            }
+            if ($placed[$f]) { Remove-Item -LiteralPath $final -Force -ErrorAction SilentlyContinue }
+            if ($moved[$f]) { Move-Item -LiteralPath "$final.ibtools-old" -Destination $final -Force -ErrorAction SilentlyContinue }
             Remove-Item -LiteralPath "$final.ibtools-new" -Force -ErrorAction SilentlyContinue
         }
-        Stop-Install 5 "Installeren mislukt: $why`r`nDe vorige installatie is teruggezet."
+        Stop-Install 5 "Installeren mislukt: $why`r`nEr is niets veranderd: de vorige installatie staat er nog."
     }
     foreach ($f in $files) {
         Remove-Item -LiteralPath (Join-Path $target "$f.ibtools-old") -Force -ErrorAction SilentlyContinue
