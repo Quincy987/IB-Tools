@@ -72,9 +72,12 @@ IB Tools is één add-in (één dll, één tabblad). Elke tool staat in een eige
   (`Zone.Identifier`) eraf: zonder dat weigert Revit 2023 de dll ("External Tool Failure").
   Exitcodes: 0 klaar, 2 zip niet uitgepakt, 3 Revit-versie niet gevonden, 4 dll in gebruik (Revit
   draait), 5 mislukt (gaat het omwisselen mis, dan wordt teruggedraaid wat al was omgewisseld;
-  de melding zegt of dat gelukt is).
+  de melding zegt of dat gelukt is), 6 IB Tools staat al op een andere plek (een ander manifest met
+  dezelfde ClientId in `%ProgramData%\Autodesk\Revit\Addins\<jaar>\` of in de eigen map; dan
+  verandert het niets).
 - Na een wijziging aan het installatiescript: `.\scripts\release.ps1`, dan
   `.\tests\Release\test-install.ps1` (zonder Revit, eigen APPDATA in %TEMP%: alle jaren, bijwerken,
-  Revit ontbreekt, dll in gebruik, fout halverwege, zip niet uitgepakt) en met het testslot
+  Revit ontbreekt, dll in gebruik, fout halverwege, al elders geïnstalleerd, zip niet uitgepakt) en
+  met het testslot
   `.\tests\Release\revit-check-install.ps1` (echte Revit 2023: geblokkeerde bestanden tegenover
   Installeren.cmd; zet daarna de oorspronkelijke bestanden in de Addins-map terug).

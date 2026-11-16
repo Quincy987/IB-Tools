@@ -16,7 +16,7 @@ IBTools-v2.1.0-Revit2024.zip 1064 KB   (.NETFramework,Version=v4.8, dll 2.1.0.0)
 IBTools-v2.1.0-Revit2025.zip 1065 KB   (.NETCoreApp,Version=v8.0, dll 2.1.0.0)
 ```
 
-## 2. Installeren.cmd zonder Revit (`tests/Release/test-install.ps1`): 51/51
+## 2. Installeren.cmd zonder Revit (`tests/Release/test-install.ps1`): 53/53
 
 De bestanden uit elke zip zijn gemarkeerd als download (`Zone.Identifier`, ZoneId=3), zoals
 Windows doet bij het uitpakken van een gedownloade zip. Uitgepakt in een pad met spaties,
@@ -38,6 +38,10 @@ en een nagemaakte Program Files in %TEMP%. Het script is gestart zoals de Verken
 - **Fout halverwege** (de dll is al omgewisseld als de stap voor het manifest mislukt): exit 5 met
   "Er is niets veranderd". De vorige dll en het vorige manifest staan er weer en er zijn geen
   restbestanden.
+- **IB Tools staat al op een andere plek** (een manifest met dezelfde ClientId in een nagemaakte
+  ProgramData, of onder een andere naam in de eigen map): exit 6. De melding noemt het bestand en
+  er is niets gekopieerd. Een ander add-in in ProgramData (andere ClientId) houdt de installatie
+  niet tegen; dat zit in alle gewone runs.
 - **Zip niet uitgepakt** (alleen het cmd-bestand in een map): exit 2 met "Pak eerst de zip uit".
 
 Gevonden en opgelost tijdens het testen: de markering `##PS-START` stond ook in een
@@ -58,6 +62,10 @@ Gevonden bij de review en opgelost:
   ook voor de sjablonen en de tests.
 - **Melding na terugzetten:** "Er is niets veranderd" verschijnt alleen als alles echt terug is.
   Anders zegt de melding welk bestand nog als `.ibtools-old` in de map staat.
+- **Tweede installatie:** Hide/Show is al bij gebruikers uitgerold. Stond die installatie voor alle
+  gebruikers in ProgramData (of onder een andere naam), dan zette het script er een tweede
+  IB Tools met dezelfde ClientId naast. Nu stopt het met exit 6. Op deze pc staat geen IB Tools in
+  ProgramData; hoe de uitrol bij gebruikers is gedaan, is niet nagegaan.
 - **Testslot in de Revit-test:** het slot wordt pas genomen vlak voor het deel dat het altijd
   vrijgeeft. Daarvoor kon een fout bij het voorbereiden het slot laten staan.
 
@@ -76,7 +84,7 @@ geen Revit meer.
   Tool Failure: Revit cannot run the external application "IB Tools""**. Het journal zegt
   `API_ERROR { Starting External Application: IB Tools ... FoundationProjectionToggle.dll,
   Assembly Version: 2.1.0.0 }`. Het tabblad komt er niet.
-- **b. Dezelfde bestanden via Installeren.cmd** (drie keer gedraaid, vóór en na elke reviewronde,
+- **b. Dezelfde bestanden via Installeren.cmd** (vier keer gedraaid, vóór en na elke reviewronde,
   steeds met dezelfde uitkomst): exit 0 met "Geinstalleerd: IB Tools
   dll-versie 2.1.0.0, gedeblokkeerd". Revit start IB Tools: de log meldt "Add-in startup completed
   successfully" en versie 2.1.0. Het journal toont `API_SUCCESS` voor de vijf knoppen (Hide,

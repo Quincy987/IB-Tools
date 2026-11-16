@@ -11,7 +11,8 @@ exit /b %RC%
 ##PS-START
 # Exit codes: 0 geinstalleerd, 2 bestanden niet naast dit script (zip niet uitgepakt),
 # 3 Revit {{REVIT}} niet gevonden en niet doorgegaan, 4 bestand in gebruik (Revit draait),
-# 5 mislukt (gaat het omwisselen mis, dan wordt het teruggedraaid; de melding zegt of dat lukte).
+# 5 mislukt (gaat het omwisselen mis, dan wordt het teruggedraaid; de melding zegt of dat lukte),
+# 6 IB Tools staat al op een andere plek (zelfde ClientId, bv. in ProgramData): niets veranderd.
 # Test-instellingen (omgevingsvariabelen): IBTOOLS_INSTALL_UNATTENDED=1 (geen vragen, geen pauze),
 # IBTOOLS_INSTALL_ASSUME=J (antwoord op de vraag), IBTOOLS_INSTALL_PROGRAMFILES (waar Revit staat).
 $ErrorActionPreference = 'Stop'
@@ -63,8 +64,26 @@ try {
 
     # 3. Doelmap van Revit (per gebruiker).
     $target = Join-Path $env:APPDATA "Autodesk\Revit\Addins\$revit"
-    if (-not (Test-Path -LiteralPath $target)) { New-Item -ItemType Directory -Force -Path $target | Out-Null }
     Say "Doelmap: $target"
+
+    # 3b. Geen tweede IB Tools naast deze: een ander manifest met hetzelfde add-in-id, voor alle
+    #     gebruikers (ProgramData, meestal door ICT) of onder een andere naam in de eigen map.
+    $addinText = [IO.File]::ReadAllText((Join-Path $src $files[1]))
+    $clientId = [regex]::Match($addinText, '<ClientId>\s*([^<]+?)\s*</ClientId>').Groups[1].Value
+    if (-not $clientId) { Stop-Install 5 "Geen ClientId gevonden in $($files[1])." }
+    $machine = Join-Path $env:ProgramData "Autodesk\Revit\Addins\$revit"
+    $others = @(@($machine, $target) | Where-Object { Test-Path -LiteralPath $_ } |
+        ForEach-Object { Get-ChildItem -LiteralPath $_ -Filter '*.addin' -File } |
+        Where-Object { $_.FullName -ne (Join-Path $target $files[1]) } |
+        Where-Object { [IO.File]::ReadAllText($_.FullName) -match [regex]::Escape($clientId) } |
+        ForEach-Object { $_.FullName })
+    if ($others.Count -gt 0) {
+        Stop-Install 6 ("IB Tools staat hier al op een andere plek: " + ($others -join ', ') + "`r`n" +
+            "Twee installaties naast elkaar geven problemen in Revit; er is niets veranderd.`r`n" +
+            "Staat hij in ProgramData, vraag dan ICT om hem bij te werken of te verwijderen. " +
+            "Staat hij in je eigen Addins-map, verwijder dan dat .addin-bestand en de dll waar het naar wijst.")
+    }
+    if (-not (Test-Path -LiteralPath $target)) { New-Item -ItemType Directory -Force -Path $target | Out-Null }
 
     # 4. Een draaiende Revit houdt de oude dll vast: dan niets aanraken.
     $existingDll = Join-Path $target $files[0]

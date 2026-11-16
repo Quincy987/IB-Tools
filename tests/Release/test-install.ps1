@@ -6,8 +6,9 @@
     unpacked. Checks per Revit year: installed, unblocked, identical to the zip, no leftovers, a
     second run (update) works; for the net48 years also that .NET Framework refuses LoadFrom on the
     marked dll before and accepts the installed one. Once: Revit not installed (exit 3 / J goes on),
-    dll in use (exit 4, nothing touched), a failure halfway (exit 5, previous install back), zip not
-    unpacked (exit 2).
+    dll in use (exit 4, nothing touched), a failure halfway (exit 5, previous install back), another
+    IB Tools with the same ClientId in ProgramData or under another name (exit 6), zip not unpacked
+    (exit 2). ProgramData is faked as well (with an unrelated add-in that must not get in the way).
 .PARAMETER ZipDir
     Folder with IBTools-v<version>-Revit<year>.zip. Default: the output of scripts\release.ps1.
 .EXAMPLE
@@ -33,12 +34,24 @@ function Check([string]$name, [bool]$ok, [string]$detail = "") {
     Write-Host ("  {0}  {1}  {2}" -f $word, $name, $detail) -ForegroundColor $(if ($ok) { "Green" } else { "Red" })
 }
 
-function Invoke-Installer([string]$Cmd, [string]$AppData, [string]$ProgramFiles, [string]$Assume) {
+function New-Manifest([string]$Dir, [string]$Name, [string]$ClientId) {
+    New-Item -ItemType Directory -Force $Dir | Out-Null
+    Set-Content -LiteralPath (Join-Path $Dir $Name) -Value ("<RevitAddIns><AddIn Type=""Application""><ClientId>$ClientId</ClientId>" +
+        "<Assembly>other.dll</Assembly></AddIn></RevitAddIns>")
+}
+# Machine-wide add-ins (ProgramData) are faked too. The default one holds an unrelated add-in per
+# year, which must not stop the installer.
+$defaultProgramData = Join-Path $work "programdata"
+foreach ($y in $years) { New-Manifest (Join-Path $defaultProgramData "Autodesk\Revit\Addins\$y") "Ander.addin" ([guid]::NewGuid()) }
+$clientId = [regex]::Match((Get-Content -Raw (Join-Path $repo $IBToolsAddinName)), '<ClientId>\s*([^<]+?)\s*</ClientId>').Groups[1].Value
+
+function Invoke-Installer([string]$Cmd, [string]$AppData, [string]$ProgramFiles, [string]$Assume, [string]$ProgramData = $defaultProgramData) {
     # Started the way Explorer starts a double-clicked .cmd: cmd.exe /c ""<path>"".
     $psi = New-Object System.Diagnostics.ProcessStartInfo "cmd.exe", ('/c ""{0}""' -f $Cmd)
     $psi.UseShellExecute = $false
     $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true; $psi.RedirectStandardInput = $true
     $psi.EnvironmentVariables["APPDATA"] = $AppData
+    $psi.EnvironmentVariables["ProgramData"] = $ProgramData
     $psi.EnvironmentVariables["IBTOOLS_INSTALL_UNATTENDED"] = "1"
     $psi.EnvironmentVariables["IBTOOLS_INSTALL_PROGRAMFILES"] = $ProgramFiles
     if ($psi.EnvironmentVariables.ContainsKey("IBTOOLS_INSTALL_ASSUME")) { $psi.EnvironmentVariables.Remove("IBTOOLS_INSTALL_ASSUME") }
@@ -195,6 +208,19 @@ try {
         }
         finally { $handle.Close() }
     }
+
+    # Another IB Tools with the same ClientId: machine-wide (ProgramData) or under another name.
+    $pdIT = Join-Path $work "programdata-it"
+    New-Manifest (Join-Path $pdIT "Autodesk\Revit\Addins\2023") "IBTools-ICT.addin" $clientId
+    $appData = Join-Path $work "appdata-machinewide"
+    $target = Join-Path $appData "Autodesk\Revit\Addins\2023"
+    $r = Invoke-Installer $cmd $appData $pf23 "" $pdIT
+    Check "al in ProgramData: exit 6, noemt het bestand, niets gekopieerd" (($r.Code -eq 6) -and ($r.Output -match "IBTools-ICT\.addin") -and -not (Test-Path $target)) "exit $($r.Code)"
+    $appData = Join-Path $work "appdata-othername"
+    $target = Join-Path $appData "Autodesk\Revit\Addins\2023"
+    New-Manifest $target "IBTools-oud.addin" $clientId.ToLowerInvariant()
+    $r = Invoke-Installer $cmd $appData $pf23 ""
+    Check "al onder een andere naam: exit 6, niets gekopieerd" (($r.Code -eq 6) -and ($r.Output -match "IBTools-oud\.addin") -and -not (Test-Path (Join-Path $target $dllName))) "exit $($r.Code)"
 
     # Zip not unpacked: Explorer extracts only the clicked .cmd to a temp folder.
     $lonely = Join-Path $work "alleen-cmd"

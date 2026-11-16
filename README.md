@@ -34,6 +34,9 @@ testverslag. Demo-video van Worksets, Modelpunt en Paalcoördinaten:
    (Ingenieursbureau Gemeente Amsterdam).
 
 Het tabblad **IB Tools** verschijnt in het lint. In de zip zit ook `LEESMIJ.txt` met deze stappen.
+Staat IB Tools al op een andere plek (bijvoorbeeld door ICT voor alle gebruikers in
+`C:\ProgramData\Autodesk\Revit\Addins\<jaar>\`), dan stopt het script zonder iets te veranderen en
+zegt het waar.
 
 **Handmatig (als het script niet mag draaien):** rechtsklik op `FoundationProjectionToggle.dll` >
 *Eigenschappen* > vink **Blokkering opheffen** aan > OK, en kopieer dan
