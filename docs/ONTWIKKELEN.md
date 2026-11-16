@@ -25,13 +25,16 @@ IB Tools is één add-in (één dll, één tabblad). Elke tool staat in een eige
    ingebed als `IBTools.icons.<bestand>`; de bestandsnaam moet dus uniek zijn over alle tools
    (`EmbeddedResourceTests` controleert dat).
 5. **Families** die de tool zelf meelevert: `Tools/<Tool>/Resources/families/<Familie>.rfa`, ingebed als
-   `IBTools.families.<bestand>`, laden met `EmbeddedFamilyLoader` (nooit van het netwerk).
+   `IBTools.families.<bestand>`, laden met `EmbeddedFamilyLoader` (nooit van het netwerk). Zet de
+   familie ook in de `InlineData` van `Embedded_family_exists_in_its_tool` (EmbeddedResourceTests).
 6. **README.md** in de toolmap, Nederlands, met de kopjes: Wat doet het / Vervangt / Wat heb je
    nodig / Zo werkt het / Wat krijg je / Verschillen met Dynamo / Beperkingen / Demo en test. Zet de
    tool in de tabel in de hoofd-README.
 7. **Tests**: unit-tests in `tests/IBTools.Tests/<Tool>/` (het testproject linkt `Tools/*/Core/**`
    automatisch; andere bestanden expliciet in `IBTools.Tests.csproj`). Een Revit-test als job in
-   `tests/RevitHarness/<Tool>/`. Testverslag in `Tools/<Tool>/verify/`.
+   `tests/RevitHarness/<Tool>/`; laat `HarnessApp.OnStartup` hem kiezen aan een markeerbestand in
+   de jobmap, zoals `remmingwerk.txt` voor `Remmingwerk/RemmingwerkHarness.cs`. Testverslag in
+   `Tools/<Tool>/verify/`.
 
 ## Bouwstenen in Shared/
 

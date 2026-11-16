@@ -61,3 +61,8 @@ herindeling met `API_SUCCESS` (de versiewaarschuwing 1.0.0.0 tegen 2.x bestond a
 
 De bestaande verslagen (`Tools/Modelpunt/verify`, `Tools/Remmingwerk/verify`) blijven geldig: de
 code van de tools is alleen verplaatst, niet veranderd.
+
+Na deze Revit-run (op e7aef7e) veranderden alleen nog commentaar in `App.cs`, logteksten van de
+Hide/Show-knop, de zichtbaarheid van een constante in `IconLoader`, de versiecontrole in
+`scripts/release.ps1` en de README's. Dat is gebouwd en unit-getest (115/115, Revit 2022 en 2025
+compileren), maar niet opnieuw in Revit gedraaid.
