@@ -16,8 +16,8 @@ namespace IBTools.Shared
     /// <remarks>
     /// <para>XAML: use it as the root element.</para>
     /// <code>
-    /// &lt;ui:RevitWindow x:Class="FoundationProjectionToggle.UI.MyInputWindow"
-    ///     xmlns:ui="clr-namespace:FoundationProjectionToggle.UI" Title="..."&gt;
+    /// &lt;ui:RevitWindow x:Class="IBTools.Tools.MyTool.MyInputWindow"
+    ///     xmlns:ui="clr-namespace:IBTools.Shared" Title="..."&gt;
     /// </code>
     /// <para>
     /// Code-behind: <c>public partial class MyInputWindow : RevitWindow</c>, with a constructor
