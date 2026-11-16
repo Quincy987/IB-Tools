@@ -61,7 +61,7 @@ param(
 $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "scripts\ibtools-common.ps1")
 
-$ProjectDir = Join-Path $PSScriptRoot "src\FoundationProjectionToggle"
+$ProjectDir = Join-Path $PSScriptRoot "src\IBTools"
 $RevitExe = "C:\Program Files\Autodesk\Revit $RevitVersion\Revit.exe"
 $AddinFolder = Join-Path $env:APPDATA "Autodesk\Revit\Addins\$RevitVersion"
 $DllName = "FoundationProjectionToggle.dll"

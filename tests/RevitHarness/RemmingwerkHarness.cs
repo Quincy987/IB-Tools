@@ -8,8 +8,8 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Structure;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
-using FoundationProjectionToggle.Core.Remmingwerk;
-using FoundationProjectionToggle.Services;
+using IBTools.Tools.Remmingwerk;
+using IBTools.Tools.Remmingwerk.Core;
 
 namespace IBTools.RevitHarness
 {

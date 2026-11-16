@@ -1,9 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Unit tests for the Revit-free parts of IB Tools (input parsing, coordinate arithmetic,
-    family type names). The tested files are compiled in directly (linked), so this project
-    needs no Revit and runs anywhere with:  dotnet test tests\IBTools.Tests
+    Unit tests for the Revit-free parts of IB Tools, one folder per tool (Shared, Modelpunt,
+    Paalcoordinaten, Remmingwerk, ...). The tested source files are compiled in directly (linked),
+    so this project needs neither Revit nor the Revit SDK:  dotnet test tests\IBTools.Tests
   -->
 
   <PropertyGroup>
@@ -12,16 +12,23 @@
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <RootNamespace>IBTools.Tests</RootNamespace>
+    <!-- Guard: the linked add-in code (incl. every Tools\*\Core) must stay C# 7.3, the language of
+         the net48 builds for Revit 2022-2024. Tests are written in 7.3 as well. -->
+    <LangVersion>7.3</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\..\src\FoundationProjectionToggle\Services\CoordinateInputParser.cs" Link="Linked\CoordinateInputParser.cs" />
-    <Compile Include="..\..\src\FoundationProjectionToggle\Services\SharedCoordinateMath.cs" Link="Linked\SharedCoordinateMath.cs" />
-    <Compile Include="..\..\src\FoundationProjectionToggle\Services\FamilyPartAtomReader.cs" Link="Linked\FamilyPartAtomReader.cs" />
+    <!-- Shared -->
+    <Compile Include="..\..\src\IBTools\Shared\CoordinateInputParser.cs" Link="Linked\Shared\CoordinateInputParser.cs" />
+    <Compile Include="..\..\src\IBTools\Shared\FamilyPartAtomReader.cs" Link="Linked\Shared\FamilyPartAtomReader.cs" />
+    <!-- Modelpunt -->
+    <Compile Include="..\..\src\IBTools\Tools\Modelpunt\SharedCoordinateMath.cs" Link="Linked\Modelpunt\SharedCoordinateMath.cs" />
+    <!-- Revit-free calculation code of every tool -->
+    <Compile Include="..\..\src\IBTools\Tools\*\Core\**\*.cs" Link="Linked\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\..\src\FoundationProjectionToggle\Resources\families\IB_GM_coordinaatpunt.rfa" Link="TestData\IB_GM_coordinaatpunt.rfa" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\IBTools\Tools\Modelpunt\Resources\families\IB_GM_coordinaatpunt.rfa" Link="TestData\IB_GM_coordinaatpunt.rfa" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

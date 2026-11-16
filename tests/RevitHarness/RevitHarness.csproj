@@ -30,7 +30,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\FoundationProjectionToggle\FoundationProjectionToggle.csproj">
+    <ProjectReference Include="..\..\src\IBTools\IBTools.csproj">
       <Private>false</Private>
       <SetConfiguration>Configuration=Release</SetConfiguration>
     </ProjectReference>
