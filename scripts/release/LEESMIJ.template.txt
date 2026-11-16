@@ -1,0 +1,26 @@
+IB Tools {{VERSION}} voor Revit {{REVIT}}
+Ingenieursbureau Gemeente Amsterdam
+
+Een add-in met het tabblad "IB Tools" in Revit: Hide/Show (projectielijnen), Paalcoordinaten,
+Modelpunt, Worksets en Remmingwerk. Uitleg per tool: https://github.com/Quincy987/IB-Tools
+
+INSTALLEREN
+1. Pak deze zip uit (rechtsklik op de zip > Alles uitpakken).
+2. Sluit Revit {{REVIT}}.
+3. Dubbelklik Installeren.cmd in de uitgepakte map.
+   Vraagt Windows "Wilt u dit bestand openen?" of "Windows heeft uw pc beveiligd": klik
+   Uitvoeren (bij het tweede eerst "Meer informatie").
+4. Start Revit {{REVIT}} en klik "Always Load" bij de vraag over IB Tools.
+
+Bijwerken naar een nieuwe versie: precies hetzelfde; de oude versie wordt vervangen.
+
+LUKT HET SCRIPT NIET? HANDMATIG
+1. Rechtsklik op FoundationProjectionToggle.dll > Eigenschappen > vink "Blokkering opheffen"
+   aan > OK. (Staat het vinkje er niet, dan is het niet nodig.)
+2. Kopieer FoundationProjectionToggle.dll en FoundationProjectionToggle.addin naar
+   %APPDATA%\Autodesk\Revit\Addins\{{REVIT}}\
+   (plak dat pad in de adresbalk van de Verkenner).
+3. Start Revit {{REVIT}} en klik "Always Load".
+
+Deze zip is alleen voor Revit {{REVIT}}. Voor een andere Revit-versie: de zip met dat jaartal
+op https://github.com/Quincy987/IB-Tools/releases/latest

@@ -1,0 +1,2 @@
+# The installer is a cmd file: keep Windows line endings in every checkout.
+*.cmd text eol=crlf

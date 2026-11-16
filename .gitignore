@@ -3,6 +3,9 @@ bin/
 obj/
 [Dd]ebug/
 [Rr]elease/
+# ...but these are sources: the installer templates and their tests.
+!/scripts/release/
+!/tests/Release/
 
 # Visual Studio
 .vs/

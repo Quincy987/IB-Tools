@@ -23,23 +23,26 @@ testverslag. Demo-video van Worksets, Modelpunt en Paalcoördinaten:
 
 1. Download de zip voor **jouw Revit-versie** van de
    [nieuwste release](https://github.com/Quincy987/IB-Tools/releases/latest)
-   (`IBTools-v<versie>-Revit2022.zip` … `-Revit2025.zip`) en pak hem uit. 2022, 2023 en 2024 zijn
+   (`IBTools-v<versie>-Revit2022.zip` … `-Revit2025.zip`). 2022, 2023 en 2024 zijn
    .NET Framework 4.8-builds, 2025 is een .NET 8-build; ze zijn niet uitwisselbaar.
-2. Zet beide bestanden in de Addins-map van Revit:
-
-   ```
-   %APPDATA%\Autodesk\Revit\Addins\<jouw Revit-versie>\
-   ```
-
-   - `FoundationProjectionToggle.dll`
-   - `FoundationProjectionToggle.addin`
-
-3. Start Revit en klik **Always Load** bij de vraag over de add-in *IB Tools*
+2. Pak de zip uit (rechtsklik > *Alles uitpakken*) en sluit Revit.
+3. Dubbelklik **`Installeren.cmd`** in de uitgepakte map. Het zet de add-in in
+   `%APPDATA%\Autodesk\Revit\Addins\<jaar>\` en haalt de Windows-downloadblokkade eraf. Vraagt
+   Windows of je het bestand wilt openen (of "Windows heeft uw pc beveiligd": eerst *Meer
+   informatie*), klik *Uitvoeren*.
+4. Start Revit en klik **Always Load** bij de vraag over de add-in *IB Tools*
    (Ingenieursbureau Gemeente Amsterdam).
 
-Het tabblad **IB Tools** verschijnt in het lint.
+Het tabblad **IB Tools** verschijnt in het lint. In de zip zit ook `LEESMIJ.txt` met deze stappen.
 
-**Bijwerken:** overschrijf beide bestanden met die van de nieuwe release. Vanaf v1.0.0 (toen nog
+**Handmatig (als het script niet mag draaien):** rechtsklik op `FoundationProjectionToggle.dll` >
+*Eigenschappen* > vink **Blokkering opheffen** aan > OK, en kopieer dan
+`FoundationProjectionToggle.dll` en `FoundationProjectionToggle.addin` naar
+`%APPDATA%\Autodesk\Revit\Addins\<jaar>\`. Sla je het deblokkeren over, dan meldt Revit
+"External Tool Failure" en verschijnt het tabblad niet (getest in Revit 2023).
+
+**Bijwerken:** precies hetzelfde; `Installeren.cmd` vervangt de vorige versie (sluit eerst Revit,
+anders meldt het script dat de dll in gebruik is en verandert het niets). Vanaf v1.0.0 (toen nog
 "Foundation Projection Toggle"): de knop Hide/Show verhuist van het tabblad Add-Ins (paneel
 Projectielijnen) naar het tabblad **IB Tools**, paneel Weergave.
 
@@ -69,8 +72,9 @@ src/IBTools/
                                 verify/ (testverslagen) en demo/ (video) waar van toepassing
 tests/IBTools.Tests/            unit-tests zonder Revit, map per tool
 tests/RevitHarness/             integratietests in een echte Revit, map per tool
+tests/Release/                  tests van Installeren.cmd (zonder Revit en in Revit 2023)
 docs/                           TESTING.md, ONTWIKKELEN.md, demo/ (video van meerdere tools)
-scripts/                        testslot, demo-opnames, release.ps1
+scripts/                        testslot, demo-opnames, release.ps1, release/ (Installeren.cmd, LEESMIJ.txt)
 ```
 
 ## Bouwen en testen
@@ -97,14 +101,15 @@ Revit (of `.\build.ps1 -Debug`); logs in `%LOCALAPPDATA%\IBTools\logs\`.
 De code heet `IBTools` (map, project, namespaces), maar de geleverde bestanden heten nog
 `FoundationProjectionToggle.dll` en `FoundationProjectionToggle.addin` en het manifest houdt zijn
 `ClientId`. Gebruikers zien die naam niet: Revit toont "IB Tools". Hernoemen (bv. naar
-`IBTools.dll` / `IBTools.addin`) moet één bewuste stap zijn, samen met een installatiescript: elke
-installatie moet dan het oude `FoundationProjectionToggle.addin` verwijderen, anders vindt Revit
-twee manifesten en laadt de add-in dubbel of weigert hij het dubbele ClientId. Daarvoor aan te
-passen:
+`IBTools.dll` / `IBTools.addin`) moet één bewuste stap zijn: `Installeren.cmd` moet dan het oude
+`FoundationProjectionToggle.addin` en `.dll` verwijderen, anders vindt Revit twee manifesten en
+laadt de add-in dubbel of weigert hij het dubbele ClientId. Daarvoor aan te passen:
 
 - `AssemblyName` en het opt-in deploydoel (`DeployAddin`) in `src/IBTools/IBTools.csproj`;
 - de naam van het manifest en zijn `<Assembly>`;
 - `$DllName`/`$ManifestName` in `build.ps1` en `$dllName`/`$manifest` in `scripts/release.ps1`;
+- de bestandsnamen in `scripts/release/Installeren.template.cmd` (`$files`, plus het opruimen van
+  de oude namen) en `LEESMIJ.template.txt`, en in `tests/Release/*.ps1`;
 - de oude ontwikkel-add-in `FoundationProjectionToggle.DevTools.dll` op de ontwikkel-pc verwijst
   naar de assemblynaam `FoundationProjectionToggle`; na hernoemen werkt die niet meer, en dan kan
   ook `src/IBTools/Shared/LegacyLogger.cs` weg.

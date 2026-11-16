@@ -1,0 +1,133 @@
+@echo off
+rem IB Tools {{VERSION}} voor Revit {{REVIT}} - installatie. Dubbelklik dit bestand.
+rem Kopieert FoundationProjectionToggle.dll en .addin naar %APPDATA%\Autodesk\Revit\Addins\{{REVIT}}\
+rem en haalt de Windows-downloadblokkade eraf. Alles onder de PS-START-regel is PowerShell.
+setlocal
+set "IBT_SELF=%~f0"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$s=[IO.File]::ReadAllText($env:IBT_SELF); iex $s.Substring($s.IndexOf('#'+'#PS-START'))"
+set "RC=%ERRORLEVEL%"
+if not "%IBTOOLS_INSTALL_UNATTENDED%"=="1" if not "%IBTOOLS_INSTALL_NOPAUSE%"=="1" pause
+exit /b %RC%
+##PS-START
+# Exit codes: 0 geinstalleerd, 2 bestanden niet naast dit script (zip niet uitgepakt),
+# 3 Revit {{REVIT}} niet gevonden en niet doorgegaan, 4 bestand in gebruik (Revit draait),
+# 5 kopieren/controle mislukt (vorige installatie teruggezet).
+# Test-instellingen (omgevingsvariabelen): IBTOOLS_INSTALL_UNATTENDED=1 (geen vragen, geen pauze),
+# IBTOOLS_INSTALL_ASSUME=J (antwoord op de vraag), IBTOOLS_INSTALL_PROGRAMFILES (waar Revit staat).
+$ErrorActionPreference = 'Stop'
+$revit = '{{REVIT}}'
+$version = '{{VERSION}}'
+$files = @('FoundationProjectionToggle.dll', 'FoundationProjectionToggle.addin')
+$unattended = ($env:IBTOOLS_INSTALL_UNATTENDED -eq '1')
+
+function Say([string]$text, [string]$color = 'Gray') { Write-Host $text -ForegroundColor $color }
+function Stop-Install([int]$code, [string]$text) {
+    Write-Host ''
+    Write-Host $text -ForegroundColor Red
+    exit $code
+}
+
+Say ''
+Say "IB Tools $version voor Revit $revit - installeren" 'Cyan'
+Say ''
+
+try {
+    # 1. De bestanden moeten naast dit script staan (niet vanuit de zip starten).
+    $src = Split-Path -Parent $env:IBT_SELF
+    foreach ($f in $files) {
+        if (-not (Test-Path -LiteralPath (Join-Path $src $f))) {
+            Stop-Install 2 ("Niet gevonden naast dit script: $f`r`n" +
+                "Pak eerst de zip uit (rechtsklik > Alles uitpakken) en dubbelklik dan Installeren.cmd in de uitgepakte map.")
+        }
+    }
+
+    # 2. Is deze Revit-versie geinstalleerd?
+    $pf = $env:IBTOOLS_INSTALL_PROGRAMFILES
+    if (-not $pf) { $pf = $env:ProgramW6432 }
+    if (-not $pf) { $pf = $env:ProgramFiles }
+    $revitExe = Join-Path $pf "Autodesk\Revit $revit\Revit.exe"
+    if (Test-Path -LiteralPath $revitExe) {
+        Say "Revit $revit gevonden." 'Green'
+    } else {
+        $found = @(Get-ChildItem -LiteralPath (Join-Path $pf 'Autodesk') -Directory -Filter 'Revit 20*' -ErrorAction SilentlyContinue |
+            Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'Revit.exe') } | ForEach-Object { $_.Name })
+        Say "Revit $revit is niet gevonden op deze pc ($revitExe)." 'Yellow'
+        if ($found.Count -gt 0) {
+            Say ("Wel gevonden: {0}. Download dan de zip voor die versie." -f ($found -join ', ')) 'Yellow'
+        }
+        if ($unattended) { $answer = $env:IBTOOLS_INSTALL_ASSUME } else { $answer = Read-Host "Toch installeren voor Revit $revit? (J/N)" }
+        if ("$answer".Trim().ToUpperInvariant() -notin @('J', 'JA', 'Y', 'YES')) {
+            Stop-Install 3 'Niet geinstalleerd.'
+        }
+    }
+
+    # 3. Doelmap van Revit (per gebruiker).
+    $target = Join-Path $env:APPDATA "Autodesk\Revit\Addins\$revit"
+    if (-not (Test-Path -LiteralPath $target)) { New-Item -ItemType Directory -Force -Path $target | Out-Null }
+    Say "Doelmap: $target"
+
+    # 4. Een draaiende Revit houdt de oude dll vast: dan niets aanraken.
+    $existingDll = Join-Path $target $files[0]
+    if (Test-Path -LiteralPath $existingDll) {
+        try {
+            $fs = [IO.File]::Open($existingDll, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+            $fs.Close()
+        } catch {
+            Stop-Install 4 "De vorige versie is in gebruik. Sluit Revit $revit en dubbelklik Installeren.cmd opnieuw."
+        }
+    }
+
+    # 5. Kopieren naast de oude bestanden, deblokkeren, dan pas omwisselen (bij een fout terugzetten).
+    foreach ($f in $files) {
+        $new = Join-Path $target "$f.ibtools-new"
+        Copy-Item -LiteralPath (Join-Path $src $f) -Destination $new -Force
+        Unblock-File -LiteralPath $new
+    }
+    $hadOld = @{}
+    try {
+        foreach ($f in $files) {
+            $final = Join-Path $target $f
+            $old = "$final.ibtools-old"
+            if (Test-Path -LiteralPath $old) { Remove-Item -LiteralPath $old -Force }
+            $hadOld[$f] = Test-Path -LiteralPath $final
+            if ($hadOld[$f]) { Move-Item -LiteralPath $final -Destination $old }
+            Move-Item -LiteralPath "$final.ibtools-new" -Destination $final
+        }
+    } catch {
+        $why = $_.Exception.Message
+        foreach ($f in $files) {
+            $final = Join-Path $target $f
+            $old = "$final.ibtools-old"
+            if ($hadOld.ContainsKey($f)) {
+                if (Test-Path -LiteralPath $final) { Remove-Item -LiteralPath $final -Force -ErrorAction SilentlyContinue }
+                if ($hadOld[$f] -and (Test-Path -LiteralPath $old)) { Move-Item -LiteralPath $old -Destination $final -ErrorAction SilentlyContinue }
+            }
+            Remove-Item -LiteralPath "$final.ibtools-new" -Force -ErrorAction SilentlyContinue
+        }
+        Stop-Install 5 "Installeren mislukt: $why`r`nDe vorige installatie is teruggezet."
+    }
+    foreach ($f in $files) {
+        Remove-Item -LiteralPath (Join-Path $target "$f.ibtools-old") -Force -ErrorAction SilentlyContinue
+    }
+
+    # 6. Controle.
+    foreach ($f in $files) {
+        $p = Join-Path $target $f
+        if (-not (Test-Path -LiteralPath $p)) { Stop-Install 5 "Controle mislukt: $p ontbreekt." }
+        if (Get-Item -LiteralPath $p -Stream 'Zone.Identifier' -ErrorAction SilentlyContinue) {
+            Stop-Install 5 "Controle mislukt: $p is nog geblokkeerd door Windows."
+        }
+    }
+    $fileVersion = (Get-Item -LiteralPath $existingDll).VersionInfo.FileVersion
+    Say "Geinstalleerd: IB Tools dll-versie $fileVersion, gedeblokkeerd." 'Green'
+    if (Get-Process -Name 'Revit' -ErrorAction SilentlyContinue) {
+        Say 'Let op: Revit draait nu. Het tabblad IB Tools verschijnt pas na opnieuw starten.' 'Yellow'
+    }
+    Say ''
+    Say "Klaar. Start Revit $revit en klik 'Always Load' bij de vraag over IB Tools." 'Cyan'
+    Say 'Het tabblad IB Tools staat dan in het lint.' 'Cyan'
+    Say ''
+    exit 0
+} catch {
+    Stop-Install 5 ("Installeren mislukt: " + $_.Exception.Message)
+}
