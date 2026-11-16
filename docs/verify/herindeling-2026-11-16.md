@@ -66,3 +66,24 @@ Na deze Revit-run (op e7aef7e) veranderden alleen nog commentaar in `App.cs`, lo
 Hide/Show-knop, de zichtbaarheid van een constante in `IconLoader`, de versiecontrole in
 `scripts/release.ps1` en de README's. Dat is gebouwd en unit-getest (115/115, Revit 2022 en 2025
 compileren), maar niet opnieuw in Revit gedraaid.
+
+## Verify-run op de eindstand (cc28def + familiecontrole)
+
+Revit 2023, `tests\RevitHarness\Remmingwerk\run-remmingwerk.ps1` met `IBTOOLS_DEBUG=1`:
+**64 van 64 controles OK**. Dat zijn de 61 van hierboven plus drie nieuwe: elke familie die in
+IB Tools zit (`IB_GM_coordinaatpunt`, `SB_wrijfgording`, `SC_wrijfstijl_generic model`) laadt echt
+uit zijn nieuwe resource `IBTools.families.<bestand>`. De bestaande kopie in het model wordt daarvoor
+eerst verwijderd, in een transactie die wordt teruggedraaid.
+
+Logging staat nu in `%LOCALAPPDATA%\IBTools\logs\`: opstarten 2.1.0.0, alle vijf knoppen toegevoegd,
+"startup completed successfully". De oude DevTools-add-in logt via het doorgeefluik
+(`FoundationProjectionToggle.DevTools OnStartup ... completed successfully`).
+
+Eén ERROR in het log: de Hide/Show-knop vindt in dit kademodel geen subcategorie `<Projection>`
+bij Structural Foundations. Dat stond met de oude code ook al in het log van 11-11
+(`%LOCALAPPDATA%\FoundationProjectionToggle\logs\log_2026-11-11.txt`): de modellen hebben die
+subcategorie niet. Het is dus geen gevolg van de herindeling.
+
+Daarna eigen Revit gesloten, slot vrij, harnas uit de Addins-map. Niet in Revit aangeklikt na de
+verhuizing: Worksets, Modelpunt, Paalcoördinaten en Hide/Show. Hun code is alleen verplaatst; hun
+knoppen, iconen en (voor Modelpunt) de familie zijn wel gecontroleerd.

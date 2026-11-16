@@ -8,6 +8,8 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Structure;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
+using IBTools.Shared;
+using IBTools.Tools.Modelpunt;
 using IBTools.Tools.Remmingwerk;
 using IBTools.Tools.Remmingwerk.Core;
 
@@ -91,6 +93,7 @@ namespace IBTools.RevitHarness
             Log("Document: " + doc.PathName);
             Log("IB Tools: " + typeof(RemmingwerkService).Assembly.GetName().Version + " uit " + typeof(RemmingwerkService).Assembly.Location);
             CheckRibbon(uiapp);
+            CheckEmbeddedFamilies(doc);
             var ctx0 = RemmingwerkService.Analyse(doc, new ElementId[0], null);
             var nap = ctx0.DefaultLevel >= 0 ? ctx0.Levels[ctx0.DefaultLevel] : null;
             if (nap == null)
@@ -209,6 +212,36 @@ namespace IBTools.RevitHarness
             }
             Check(found.SequenceEqual(expected), "Lint: panelen, knoppen en volgorde zoals vóór de herindeling (" +
                 string.Join(" | ", found.Select(f => f.Item1 + "/" + f.Item2)) + ")");
+        }
+
+        /// <summary>
+        /// Every family shipped inside IB Tools really loads from its embedded resource
+        /// (IBTools.families.&lt;file&gt;): an existing copy in the model is deleted first so the load
+        /// path runs; everything happens in a transaction that is rolled back.
+        /// </summary>
+        private void CheckEmbeddedFamilies(Document doc)
+        {
+            var names = new[] { CoordinatePointFamilyService.FamilyName, RemmingwerkFamilyService.WrijfgordingFamily, RemmingwerkFamilyService.WrijfstijlFamily };
+            using (var t = new Transaction(doc, "harness: ingebedde families laden"))
+            {
+                t.Start();
+                foreach (var name in names)
+                {
+                    var bytes = EmbeddedFamilyLoader.ReadBytes(name);
+                    var existing = EmbeddedFamilyLoader.FindFamily(doc, name);
+                    if (existing != null)
+                    {
+                        doc.Delete(existing.Id);
+                    }
+                    var loaded = EmbeddedFamilyLoader.Load(doc, name);
+                    int types = loaded != null ? loaded.GetFamilySymbolIds().Count : 0;
+                    Check(bytes != null && loaded != null && types > 0, string.Format(
+                        "Familie {0}: resource {1} ({2} kB), geladen {3} met {4} type(n){5}",
+                        name, EmbeddedFamilyLoader.ResourceNameOf(name), bytes != null ? bytes.Length / 1024 : 0,
+                        loaded != null ? "ja" : "NEE", types, existing != null ? " (bestaande kopie eerst verwijderd)" : string.Empty));
+                }
+                t.RollBack();
+            }
         }
 
         private void LoadSteel(Document doc)
