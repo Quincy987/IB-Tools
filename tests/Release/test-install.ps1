@@ -110,8 +110,9 @@ Write-Host "Installeren.cmd testen: v$version, zips uit $ZipDir" -ForegroundColo
 try {
     foreach ($y in $years) {
         Write-Host "Revit ${y}:" -ForegroundColor Yellow
-        # Spaces, brackets and an ampersand in the path, like "Downloads\IBTools (1)".
-        $src = Expand-Download $y "Mijn downloads $y\IBTools (1) & co"
+        # Spaces, brackets, an ampersand and a non-ASCII letter in the path, like
+        # "Coordinaten\IBTools (1)" with a diaeresis (built with [char] to keep this file ASCII).
+        $src = Expand-Download $y ("Co" + [char]0x00F6 + "rdinaten $y\IBTools (1) & co")
         $pf = New-FakeProgramFiles (Join-Path $work "pf-$y") @($y)
         $appData = Join-Path $work "appdata-$y"
         $target = Join-Path $appData "Autodesk\Revit\Addins\$y"

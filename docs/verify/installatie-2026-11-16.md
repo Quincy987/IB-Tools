@@ -20,7 +20,7 @@ IBTools-v2.1.0-Revit2025.zip 1065 KB   (.NETCoreApp,Version=v8.0, dll 2.1.0.0)
 
 De bestanden uit elke zip zijn gemarkeerd als download (`Zone.Identifier`, ZoneId=3), zoals
 Windows doet bij het uitpakken van een gedownloade zip. Uitgepakt in een pad met spaties,
-haakjes en een `&` (`Mijn downloads 2023\IBTools (1) & co`). Elke run heeft een eigen APPDATA
+haakjes, een `&` en een letter met trema (`Coördinaten 2023\IBTools (1) & co`). Elke run heeft een eigen APPDATA
 en een nagemaakte Program Files in %TEMP%. Het script is gestart zoals de Verkenner het doet
 (`cmd.exe /c ""<pad>""`).
 
