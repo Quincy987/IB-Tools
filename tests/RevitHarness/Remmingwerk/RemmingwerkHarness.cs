@@ -89,6 +89,8 @@ namespace IBTools.RevitHarness
         {
             var doc = uidoc.Document;
             Log("Document: " + doc.PathName);
+            Log("IB Tools: " + typeof(RemmingwerkService).Assembly.GetName().Version + " uit " + typeof(RemmingwerkService).Assembly.Location);
+            CheckRibbon(uiapp);
             var ctx0 = RemmingwerkService.Analyse(doc, new ElementId[0], null);
             var nap = ctx0.DefaultLevel >= 0 ? ctx0.Levels[ctx0.DefaultLevel] : null;
             if (nap == null)
@@ -173,6 +175,40 @@ namespace IBTools.RevitHarness
             Log("UI. Lijn U (" + u + ") geselecteerd; PostCommand(" + ButtonId + ") verstuurd; elementen vooraf: " + _countBeforeUi);
             Flush();
             File.WriteAllText(Path.Combine(_job, "ui-ready.txt"), "ready");
+        }
+
+        /// <summary>
+        /// The IB Tools tab as users see it: panels and buttons in this order, with these internal
+        /// names (they form the command ids CustomCtrl_%CustomCtrl_%IB Tools%&lt;panel&gt;%&lt;name&gt;),
+        /// and every button with a large and a small icon.
+        /// </summary>
+        private void CheckRibbon(UIApplication uiapp)
+        {
+            var expected = new[]
+            {
+                Tuple.Create("Weergave", "ToggleProjection"),
+                Tuple.Create("Coördinaten", "PileCoordinates"),
+                Tuple.Create("Coördinaten", "CoordinatePoint"),
+                Tuple.Create("Model", "IbWorksets"),
+                Tuple.Create("Kademuren", "Remmingwerk"),
+            };
+            var found = new List<Tuple<string, string>>();
+            var panels = uiapp.GetRibbonPanels("IB Tools");
+            Log("Lint: panelen " + string.Join(", ", panels.Select(p => p.Name)));
+            foreach (var panel in panels)
+            {
+                foreach (var item in panel.GetItems())
+                {
+                    var pb = item as PushButton;
+                    found.Add(Tuple.Create(panel.Name, item.Name));
+                    Log(string.Format("   {0} › {1} ('{2}'): groot icoon {3}, klein icoon {4}",
+                        panel.Name, item.Name, pb != null ? pb.ItemText : item.ItemText,
+                        pb != null && pb.LargeImage != null ? "ja" : "NEE", pb != null && pb.Image != null ? "ja" : "NEE"));
+                    Check(pb != null && pb.LargeImage != null && pb.Image != null, "Lint: " + item.Name + " heeft beide iconen");
+                }
+            }
+            Check(found.SequenceEqual(expected), "Lint: panelen, knoppen en volgorde zoals vóór de herindeling (" +
+                string.Join(" | ", found.Select(f => f.Item1 + "/" + f.Item2)) + ")");
         }
 
         private void LoadSteel(Document doc)

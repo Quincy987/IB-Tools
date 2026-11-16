@@ -27,6 +27,9 @@
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
     <Reference Include="System.Web.Extensions" />
+    <!-- PushButton.LargeImage/Image are WPF ImageSource (ribbon icon check). -->
+    <Reference Include="PresentationCore" />
+    <Reference Include="WindowsBase" />
   </ItemGroup>
 
   <ItemGroup>
