@@ -15,8 +15,8 @@ namespace IBTools.Shared
     ///
     /// <para>
     /// <b>Activation:</b>
-    /// Set environment variable PROJECTION_TOGGLE_DEBUG=1 before starting Revit.
-    /// Logs are written to %LOCALAPPDATA%\FoundationProjectionToggle\logs\
+    /// Set environment variable IBTOOLS_DEBUG=1 before starting Revit (the old name
+    /// PROJECTION_TOGGLE_DEBUG=1 still works). Logs are written to %LOCALAPPDATA%\IBTools\logs\
     /// </para>
     ///
     /// <para>
@@ -27,17 +27,24 @@ namespace IBTools.Shared
     /// </summary>
     public static class Logger
     {
-        // Log directory: %LOCALAPPDATA%\FoundationProjectionToggle\logs\
+        /// <summary>Environment variable that switches logging on ("1").</summary>
+        public const string DebugVariable = "IBTOOLS_DEBUG";
+
+        /// <summary>Name used before IB Tools (Foundation Projection Toggle); still honoured.</summary>
+        public const string LegacyDebugVariable = "PROJECTION_TOGGLE_DEBUG";
+
+        // Log directory: %LOCALAPPDATA%\IBTools\logs\ (next to the Revit test lock and pid files)
         private static readonly string LogDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "FoundationProjectionToggle",
+            "IBTools",
             "logs"
         );
 
         // Check once at startup, cache result
         // This avoids repeated environment variable lookups
         private static readonly bool IsDebugMode =
-            Environment.GetEnvironmentVariable("PROJECTION_TOGGLE_DEBUG") == "1";
+            Environment.GetEnvironmentVariable(DebugVariable) == "1" ||
+            Environment.GetEnvironmentVariable(LegacyDebugVariable) == "1";
 
         /// <summary>
         /// Log informational message (normal operations).
