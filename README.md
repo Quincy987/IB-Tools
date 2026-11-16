@@ -19,18 +19,25 @@ Builds for Revit **2022, 2023, 2024 and 2025** (tested in Revit 2023).
 
 ## Installation
 
-1. Copy both files to your Revit Addins folder:
+1. Download the zip for your Revit version from the
+   [latest release](https://github.com/Quincy987/IB-Tools/releases/latest)
+   (`IBTools-v<version>-Revit2022.zip` ... `-Revit2025.zip`) and unzip it, or build it yourself
+   (see below; output in `bin\Release\Revit<version>\`).
+
+2. Copy both files to your Revit Addins folder:
 
    ```
    %APPDATA%\Autodesk\Revit\Addins\<your Revit version>\
    ```
 
-   - `FoundationProjectionToggle.dll` (from `bin\Release\Revit<version>\`)
+   - `FoundationProjectionToggle.dll`
    - `FoundationProjectionToggle.addin`
 
-   Use the dll built for that exact Revit version (2025 is a .NET 8 build).
+   Use the dll built for that exact Revit version (2025 is a .NET 8 build). Upgrading from
+   v1.0.0 (Foundation Projection Toggle): overwrite both files; the Hide/Show button moves from
+   its own tab to the **IB Tools** tab.
 
-2. Start Revit. When prompted about the add-in **IB Tools** (Ingenieursbureau Gemeente Amsterdam),
+3. Start Revit. When prompted about the add-in **IB Tools** (Ingenieursbureau Gemeente Amsterdam),
    click **Always Load**.
 
 The **IB Tools** tab appears in the ribbon.
