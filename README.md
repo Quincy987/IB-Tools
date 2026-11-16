@@ -100,5 +100,11 @@ De code heet `IBTools` (map, project, namespaces), maar de geleverde bestanden h
 `IBTools.dll` / `IBTools.addin`) moet één bewuste stap zijn, samen met een installatiescript: elke
 installatie moet dan het oude `FoundationProjectionToggle.addin` verwijderen, anders vindt Revit
 twee manifesten en laadt de add-in dubbel of weigert hij het dubbele ClientId. Daarvoor aan te
-passen: `AssemblyName` in `src/IBTools/IBTools.csproj`, de manifestnaam en `<Assembly>`, en
-`$DllName`/`$ManifestName` in `build.ps1`.
+passen:
+
+- `AssemblyName` en het opt-in deploydoel (`DeployAddin`) in `src/IBTools/IBTools.csproj`;
+- de naam van het manifest en zijn `<Assembly>`;
+- `$DllName`/`$ManifestName` in `build.ps1` en `$dllName`/`$manifest` in `scripts/release.ps1`;
+- de oude ontwikkel-add-in `FoundationProjectionToggle.DevTools.dll` op de ontwikkel-pc verwijst
+  naar de assemblynaam `FoundationProjectionToggle`; na hernoemen werkt die niet meer, en dan kan
+  ook `src/IBTools/Shared/LegacyLogger.cs` weg.
