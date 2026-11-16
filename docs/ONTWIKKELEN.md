@@ -1,0 +1,63 @@
+# Ontwikkelen: een tool toevoegen
+
+IB Tools is één add-in (één dll, één tabblad). Elke tool staat in een eigen map
+`src/IBTools/Tools/<Tool>/`; wat meerdere tools gebruiken staat in `src/IBTools/Shared/`.
+
+## Stappen
+
+1. **Map** `src/IBTools/Tools/<Tool>/` (naam zonder trema of spaties), namespace
+   `IBTools.Tools.<Tool>`. Revit-vrije rekencode in `Core/` (namespace `IBTools.Tools.<Tool>.Core`),
+   zodat hij unit-tests kan krijgen zonder Revit.
+2. **Command**: een `IExternalCommand` met `[Transaction(TransactionMode.Manual)]`. Doe alle
+   wijzigingen in één transactie, zodat één Ctrl+Z alles ongedaan maakt.
+3. **Lint**: één regel in `App.OnStartup`, op de plek waar de knop in de volgorde hoort (de volgorde
+   van de regels is de volgorde van panelen en knoppen):
+
+   ```csharp
+   RibbonManager.AddPushButton<MyCommand>(application, "Paneel", "InternalName", "Label", "Tooltip",
+       iconName: "my-icon", availability: typeof(ProjectDocumentAvailability));
+   ```
+
+   `InternalName` is het vaste id van de knop (Revit gebruikt het voor sneltoetsen; tests en
+   demo-scripts drukken knoppen in via `CustomCtrl_%CustomCtrl_%IB Tools%<Paneel>%<InternalName>`).
+   Verander het niet meer na een release.
+4. **Icoon**: `Tools/<Tool>/Resources/icons/<my-icon>-32.png` en `-16.png`. Ze worden automatisch
+   ingebed als `IBTools.icons.<bestand>`; de bestandsnaam moet dus uniek zijn over alle tools
+   (`EmbeddedResourceTests` controleert dat).
+5. **Families** die de tool zelf meelevert: `Tools/<Tool>/Resources/families/<Familie>.rfa`, ingebed als
+   `IBTools.families.<bestand>`, laden met `EmbeddedFamilyLoader` (nooit van het netwerk). Zet de
+   familie ook in de `InlineData` van `Embedded_family_exists_in_its_tool` (EmbeddedResourceTests).
+6. **README.md** in de toolmap, Nederlands, met de kopjes: Wat doet het / Vervangt / Wat heb je
+   nodig / Zo werkt het / Wat krijg je / Verschillen met Dynamo / Beperkingen / Demo en test. Zet de
+   tool in de tabel in de hoofd-README.
+7. **Tests**: unit-tests in `tests/IBTools.Tests/<Tool>/` (het testproject linkt `Tools/*/Core/**`
+   automatisch; andere bestanden expliciet in `IBTools.Tests.csproj`). Een Revit-test als job in
+   `tests/RevitHarness/<Tool>/`; laat `HarnessApp.OnStartup` hem kiezen aan een markeerbestand in
+   de jobmap, zoals `remmingwerk.txt` voor `Remmingwerk/RemmingwerkHarness.cs`. Testverslag in
+   `Tools/<Tool>/verify/`.
+
+## Bouwstenen in Shared/
+
+- `ProjectDocumentAvailability`: knop alleen actief met een project open (niet in de familie-editor).
+  `ViewBasedAvailability` (alleen in views met V/G) hoort bij Projectielijnen.
+- Vensters: leid af van `RevitWindow` (eigenaar Revit, Esc sluit, `ShowModal()`), XAML-root
+  `<ui:RevitWindow ...>` met `xmlns:ui="clr-namespace:IBTools.Shared"`.
+- Resultaten: `ResultDialog.Show(uiapp, titel, samenvatting, details)` met selecteerbare tekst en
+  *Kopiëren naar klembord*; `ClipboardHelper.TrySetText/TryGetText`. Diagnose- en foutmeldingen
+  altijd met kopiëren naar klembord (`copyImmediately: true`).
+- `Logger.Info/Warn/Error`: schrijft alleen met `IBTOOLS_DEBUG=1`, naar `%LOCALAPPDATA%\IBTools\logs\`.
+- `CoordinateInputParser`: getallen en RD-coördinaten uit tekst (komma of punt, m of mm).
+
+## Taal en versies
+
+- Revit 2022–2024 bouwen als net48, dus C# 7.3. Het testproject staat op `LangVersion 7.3` om dat
+  te bewaken; gebruik geen nieuwere taalfeatures in de add-in.
+- Voorwaardelijke compilatie: `REVIT2022` … `REVIT2025`, `REVIT2025_OR_GREATER` (.NET 8).
+
+## Bouwen, testen, release
+
+- `dotnet build` / `dotnet test` in de hoofdmap; `.\build.ps1 -NoDeploy [-RevitVersion 2025]`.
+- Testen in Revit om de beurt met het slot: [TESTING.md](TESTING.md).
+- `.\scripts\release.ps1`: tests en per Revit-versie een zip met de dll en het manifest in
+  `%LOCALAPPDATA%\IBTools\release\v<versie>\`. Het publiceert niets; een GitHub-release maak je
+  daarna zelf (versie staat in `src/IBTools/IBTools.csproj`).

@@ -31,7 +31,7 @@
     .\build.ps1 -NoDeploy                 # compile check, safe anytime
     .\build.ps1                           # Revit 2023: lock, build, deploy, start Revit
     .\build.ps1 -RevitVersion 2025 -NoDeploy
-    .\build.ps1 -Debug                    # Revit started with PROJECTION_TOGGLE_DEBUG=1
+    .\build.ps1 -Debug                    # Revit started with IBTOOLS_DEBUG=1 (logs: %LOCALAPPDATA%\IBTools\logs)
     .\build.ps1 -OpenFile C:\temp\copy.rvt  # start Revit with a (copy of a) model
 #>
 
@@ -51,7 +51,7 @@ param(
     # Deploy but do not start Revit.
     [switch]$NoRestart,
 
-    # Start Revit with debug logging (PROJECTION_TOGGLE_DEBUG=1).
+    # Start Revit with debug logging (IBTOOLS_DEBUG=1).
     [switch]$Debug,
 
     # Open this .rvt/.rfa in the started Revit (test on a COPY of a model).
@@ -61,7 +61,7 @@ param(
 $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "scripts\ibtools-common.ps1")
 
-$ProjectDir = Join-Path $PSScriptRoot "src\FoundationProjectionToggle"
+$ProjectDir = Join-Path $PSScriptRoot "src\IBTools"
 $RevitExe = "C:\Program Files\Autodesk\Revit $RevitVersion\Revit.exe"
 $AddinFolder = Join-Path $env:APPDATA "Autodesk\Revit\Addins\$RevitVersion"
 $DllName = "FoundationProjectionToggle.dll"
@@ -194,8 +194,8 @@ try {
             Write-Host "[4/4] Starting Revit $RevitVersion..." -ForegroundColor Yellow
         }
         if ($Debug) {
-            $env:PROJECTION_TOGGLE_DEBUG = "1"
-            Write-Host "    Debug logging ENABLED ($env:LOCALAPPDATA\FoundationProjectionToggle\logs\)" -ForegroundColor Magenta
+            $env:IBTOOLS_DEBUG = "1"
+            Write-Host "    Debug logging ENABLED ($env:LOCALAPPDATA\IBTools\logs\)" -ForegroundColor Magenta
         }
         if ($OpenFile) {
             $proc = Start-Process -FilePath $RevitExe -ArgumentList ('"{0}"' -f (Resolve-Path $OpenFile).Path) -PassThru

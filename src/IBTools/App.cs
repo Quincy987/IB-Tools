@@ -1,0 +1,125 @@
+using Autodesk.Revit.UI;
+using IBTools.Shared;
+using IBTools.Tools.Modelpunt;
+using IBTools.Tools.Paalcoordinaten;
+using IBTools.Tools.Projectielijnen;
+using IBTools.Tools.Remmingwerk;
+using IBTools.Tools.Worksets;
+
+namespace IBTools
+{
+    /// <summary>
+    /// Main entry point for the IB Tools Revit add-in (assembly FoundationProjectionToggle).
+    ///
+    /// <para>
+    /// <b>Lifecycle:</b>
+    /// - OnStartup: Called when Revit loads add-in (after .addin manifest processed)
+    /// - OnShutdown: Called when Revit closes (cleanup opportunity)
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Responsibilities:</b>
+    /// - Create and wire up all services (poor man's DI)
+    /// - Create ribbon UI
+    /// - Clean up on shutdown
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Error Handling:</b>
+    /// OnStartup failures prevent add-in from loading. We log errors but
+    /// let exceptions propagate so Revit shows appropriate error.
+    /// </para>
+    /// </summary>
+    public class App : IExternalApplication
+    {
+        private ProjectionToggleButton _toggleButton;
+
+        /// <summary>
+        /// Called when Revit loads the add-in.
+        /// </summary>
+        /// <param name="application">Revit UI controlled application.</param>
+        /// <returns>Success if add-in loaded, Failed otherwise.</returns>
+        public Result OnStartup(UIControlledApplication application)
+        {
+            Logger.Info("========================================");
+            Logger.Info("IB Tools (FoundationProjectionToggle) OnStartup");
+            Logger.Info($"Revit version: {application.ControlledApplication.VersionNumber}");
+            Logger.Info($"Add-in version: {typeof(App).Assembly.GetName().Version}");
+            Logger.Info("========================================");
+
+            try
+            {
+                // Create services (dependency injection, manual wiring)
+                var localization = new LocalizationService();
+                var visibility = new CategoryVisibilityService(localization);
+
+                // Ribbon: one entry per tool (Tools/<Tool>/). The order of these lines is the order
+                // of the panels and buttons on the IB Tools tab; do not reorder released buttons.
+
+                // Weergave › Hide/Show (Projectielijnen): stateful, follows the active view
+                _toggleButton = new ProjectionToggleButton(visibility);
+                _toggleButton.Create(application);
+
+                // Coördinaten › Paalcoördinaten
+                RibbonManager.AddPushButton<WritePileCoordinatesCommand>(application, "Coördinaten", "PileCoordinates", "Paalcoördinaten", "Schrijft de RD-coördinaten (m, 3 decimalen) van elke paal in X-/Y-coördinaat_funderingspaal. Selectie: alleen die palen, anders het hele model.", iconName: "pilecoords", availability: typeof(ProjectDocumentAvailability));
+
+                // Model › Worksets
+                RibbonManager.AddPushButton<CreateIbWorksetsCommand>(application, "Model", "IbWorksets", "Worksets", "Zet worksharing aan (indien nodig) en maakt de IB-standaard worksets 01 t/m 06.", iconName: "worksets", availability: typeof(ProjectDocumentAvailability));
+
+                // Coördinaten › Modelpunt
+                RibbonManager.AddPushButton<PlaceCoordinatePointCommand>(application, "Coördinaten", "CoordinatePoint", "Modelpunt",
+                    "Plaatst een coördinaatpunt op een RD-coördinaat en NAP-hoogte (via de gedeelde coördinaten van het project).",
+                    iconName: "coordpoint", availability: typeof(ProjectDocumentAvailability));
+
+                // Kademuren › Remmingwerk
+                RibbonManager.AddPushButton<RemmingwerkCommand>(application, "Kademuren", "Remmingwerk", "Remmingwerk",
+                    "Plaatst een standaard remmingwerk (buispalen, stalen stijlen en gordingen, wrijfgordingen en wrijfstijlen) langs de gekozen modellijn(en). De tekenrichting bepaalt de kant; alles in één Ctrl+Z.",
+                    iconName: "remmingwerk", availability: typeof(ProjectDocumentAvailability));
+
+                // Set references on command for access during execution
+                // This is a simple alternative to full DI container
+                ToggleProjectionCommand.VisibilityService = visibility;
+                ToggleProjectionCommand.ToggleButton = _toggleButton; // For immediate button state update
+
+                Logger.Info("Add-in startup completed successfully");
+                return Result.Succeeded;
+            }
+            catch (System.Exception ex)
+            {
+                Logger.Error("Add-in startup failed", ex);
+
+                // Return failed so Revit knows add-in didn't load
+                return Result.Failed;
+            }
+        }
+
+        /// <summary>
+        /// Called when Revit is closing.
+        /// </summary>
+        /// <param name="application">Revit UI controlled application.</param>
+        /// <returns>Always returns Succeeded.</returns>
+        public Result OnShutdown(UIControlledApplication application)
+        {
+            Logger.Info("IB Tools (FoundationProjectionToggle) OnShutdown");
+
+            try
+            {
+                // Cleanup the toggle button (unregister events)
+                _toggleButton?.Cleanup(application);
+
+                // Clear static references to prevent memory leaks
+                ToggleProjectionCommand.VisibilityService = null;
+                ToggleProjectionCommand.ToggleButton = null;
+
+                Logger.Info("Add-in shutdown completed");
+            }
+            catch (System.Exception ex)
+            {
+                Logger.Error("Error during shutdown", ex);
+                // Don't fail shutdown - Revit is closing anyway
+            }
+
+            return Result.Succeeded;
+        }
+    }
+}

@@ -3,15 +3,16 @@
 - `ibtools-demo.mp4` (±2 min, 1600×1000, 10 fps): de knoppen Worksets → Modelpunt op coördinaat →
   Paalcoördinaten op een kopie van het kademuur-model Prinsengracht (RD-coördinaten, 40 houten palen),
   met titelkaarten en ondertitels. `stills/` zijn de beginbeelden van elke scène.
-- `remmingwerk-demo.mp4` (±75 s): de knop Remmingwerk, apart: modellijn vóór de kade, venster,
-  Plaatsen, resultaat, 3D, Ctrl+Z/Ctrl+Y. `stills-remmingwerk/`.
+- De video van één tool staat bij die tool: Remmingwerk (±75 s: modellijn vóór de kade, venster,
+  Plaatsen, resultaat, 3D, Ctrl+Z/Ctrl+Y) in
+  [src/IBTools/Tools/Remmingwerk/demo/](../../src/IBTools/Tools/Remmingwerk/demo/remmingwerk-demo.mp4).
 - Hide/Show (projectielijnen) staat bewust niet in een video: die knop is al bij gebruikers uitgerold.
 
 ## Opnieuw opnemen
 
 ```powershell
 .\scripts\demo\run-demo.ps1                      # ibtools-demo.mp4: neemt het Revit-testslot, bouwt, deployt, neemt op, snijdt
-.\scripts\demo\run-demo.ps1 -Scene remmingwerk   # remmingwerk-demo.mp4 (eigen take-map, eigen stills)
+.\scripts\demo\run-demo.ps1 -Scene remmingwerk   # src\IBTools\Tools\Remmingwerk\demo\remmingwerk-demo.mp4 + stills
 .\scripts\demo\run-demo.ps1 -CutOnly [-Scene ..] # alleen opnieuw snijden (kaarten/ondertitels) uit de laatste take
 ```
 

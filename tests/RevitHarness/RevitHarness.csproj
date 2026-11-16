@@ -27,10 +27,13 @@
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
     <Reference Include="System.Web.Extensions" />
+    <!-- PushButton.LargeImage/Image are WPF ImageSource (ribbon icon check). -->
+    <Reference Include="PresentationCore" />
+    <Reference Include="WindowsBase" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\FoundationProjectionToggle\FoundationProjectionToggle.csproj">
+    <ProjectReference Include="..\..\src\IBTools\IBTools.csproj">
       <Private>false</Private>
       <SetConfiguration>Configuration=Release</SetConfiguration>
     </ProjectReference>

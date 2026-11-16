@@ -4,8 +4,9 @@
     on a fresh copy of the demo model, lets drive.py press the buttons while rec.py records the
     screen, releases the lock (closes only our Revit) and cuts the mp4 with cut.py.
 .EXAMPLE
-    .\scripts\demo\run-demo.ps1                 # full run -> docs\demo\ibtools-demo.mp4
-    .\scripts\demo\run-demo.ps1 -CutOnly        # re-cut the last take without Revit
+    .\scripts\demo\run-demo.ps1                     # full run -> docs\demo\ibtools-demo.mp4
+    .\scripts\demo\run-demo.ps1 -Scene remmingwerk  # -> src\IBTools\Tools\Remmingwerk\demo\remmingwerk-demo.mp4
+    .\scripts\demo\run-demo.ps1 -CutOnly            # re-cut the last take without Revit
 #>
 param(
     [switch]$CutOnly,
@@ -19,9 +20,15 @@ $repo = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 $demoDir = Join-Path $env:LOCALAPPDATA "IBTools\demo"
 $take = Join-Path $demoDir "take-$Scene"
 $model = Join-Path $demoDir "IB Tools demo - Prinsengracht kademuur.rvt"
-$out = Join-Path $repo "docs\demo\$Scene-demo.mp4"
-$stills = Join-Path $repo "docs\demo\stills-$Scene"
-if ($Scene -eq "ibtools") { $stills = Join-Path $repo "docs\demo\stills" }
+# The tour of several tools lives in docs\demo; a single-tool video lives next to its tool.
+if ($Scene -eq "ibtools") {
+    $out = Join-Path $repo "docs\demo\ibtools-demo.mp4"
+    $stills = Join-Path $repo "docs\demo\stills"
+} else {
+    $toolDemo = Join-Path $repo "src\IBTools\Tools\Remmingwerk\demo"
+    $out = Join-Path $toolDemo "$Scene-demo.mp4"
+    $stills = Join-Path $toolDemo "stills"
+}
 if (-not $env:IBTOOLS_LOCK_OWNER) { $env:IBTOOLS_LOCK_OWNER = "demo-video@Revit-projectlijnen" }
 
 if (-not $CutOnly) {

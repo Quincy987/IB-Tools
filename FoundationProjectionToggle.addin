@@ -43,7 +43,7 @@
       The class that implements IExternalApplication.
       Revit instantiates this class and calls OnStartup/OnShutdown.
     -->
-    <FullClassName>FoundationProjectionToggle.App</FullClassName>
+    <FullClassName>IBTools.App</FullClassName>
 
     <!-- Vendor identification for support and licensing -->
     <VendorId>IBAMSTERDAM</VendorId>

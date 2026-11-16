@@ -21,7 +21,7 @@ TIMELINE = []
 UIA = Desktop(backend="uia")
 REC = None
 
-CLIP_COORD = "121124,907 486164,311 1,300"      # 2nd corner of the quay (see docs/verify), decimal commas
+CLIP_COORD = "121124,907 486164,311 1,300"      # 2nd corner of the quay (see src/IBTools/Tools/Modelpunt/verify), decimal commas
 BUTTONS = {   # label on the ribbon -> PostCommand id (fallback when UIA cannot find the button)
     "Worksets": "CustomCtrl_%CustomCtrl_%IB Tools%Model%IbWorksets",
     "Modelpunt": "CustomCtrl_%CustomCtrl_%IB Tools%Coördinaten%CoordinatePoint",

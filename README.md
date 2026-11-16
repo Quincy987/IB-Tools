@@ -1,113 +1,110 @@
-# IB Tools for Revit
+# IB Tools
 
-Revit add-in of Ingenieursbureau Gemeente Amsterdam: one ribbon tab **IB Tools** with buttons that
-replace the bureau's Dynamo scripts.
+Revit-add-in van het **Ingenieursbureau Gemeente Amsterdam**: een bibliotheek van tools die de
+Dynamo-scripts van het bureau vervangen. Eén keer installeren geeft één tabblad **IB Tools** met
+alle tools; geen Dynamo Player, geen packages, geen Excel ernaast.
 
-Current buttons:
+## Tools
 
-- **Weergave → Hide/Show**: toggles the visibility of **Structural Foundation projection lines**
-  in the active view (no digging through Visibility/Graphics overrides).
-- **Coördinaten → Paalcoördinaten**: writes the RD coordinates of each pile into
-  X-/Y-coördinaat_funderingspaal (Dynamo "Funderingspalen_coordinaten").
-- **Coördinaten → Modelpunt**: places the IB coordinate point on an RD/NAP position
-  (Dynamo "Modelpoint op coordinaat v1.1").
-- **Model → Worksets**: switches worksharing on and creates the IB standard worksets (Dynamo "IB_Worksets").
-- **Kademuren → Remmingwerk**: places a standard remmingwerk along model lines (Dynamo "Remmingwerk v1.2"),
-  see [Remmingwerk](#remmingwerk).
+| Paneel | Knop | Wat doet het | Vervangt (Dynamo) |
+|---|---|---|---|
+| Weergave | [Hide/Show](src/IBTools/Tools/Projectielijnen/README.md) | Projectielijnen van funderingen in de actieve view aan/uit. | Projectielijnen funderingspalen zichtbaar v1.0 |
+| Coördinaten | [Paalcoördinaten](src/IBTools/Tools/Paalcoordinaten/README.md) | Schrijft de RD-coördinaten van elke paal in X-/Y-coördinaat_funderingspaal. | Funderingspalen_coordinaten v1.0 |
+| Coördinaten | [Modelpunt](src/IBTools/Tools/Modelpunt/README.md) | Plaatst het IB-coördinaatpunt op een RD-coördinaat en NAP-hoogte. | Modelpoint op coordinaat v1.1 |
+| Model | [Worksets](src/IBTools/Tools/Worksets/README.md) | Zet worksharing aan en maakt de IB-standaardworksets 01 t/m 06. | IB_Worksets v1.0 |
+| Kademuren | [Remmingwerk](src/IBTools/Tools/Remmingwerk/README.md) | Plaatst een standaard remmingwerk langs modellijnen. | Remmingwerk v1.2 |
 
-Builds for Revit **2022, 2023, 2024 and 2025** (tested in Revit 2023).
+Elke tool heeft een eigen README: wat het doet, wat je nodig hebt, de stappen, wat je krijgt, de
+verschillen met het Dynamo-script en de beperkingen, met links naar de demo-video en het
+testverslag. Demo-video van Worksets, Modelpunt en Paalcoördinaten:
+[docs/demo/ibtools-demo.mp4](docs/demo/ibtools-demo.mp4).
 
-## Installation
+## Installeren
 
-1. Download the zip for your Revit version from the
-   [latest release](https://github.com/Quincy987/IB-Tools/releases/latest)
-   (`IBTools-v<version>-Revit2022.zip` ... `-Revit2025.zip`) and unzip it, or build it yourself
-   (see below; output in `bin\Release\Revit<version>\`).
-
-2. Copy both files to your Revit Addins folder:
+1. Download de zip voor **jouw Revit-versie** van de
+   [nieuwste release](https://github.com/Quincy987/IB-Tools/releases/latest)
+   (`IBTools-v<versie>-Revit2022.zip` … `-Revit2025.zip`) en pak hem uit. 2022, 2023 en 2024 zijn
+   .NET Framework 4.8-builds, 2025 is een .NET 8-build; ze zijn niet uitwisselbaar.
+2. Zet beide bestanden in de Addins-map van Revit:
 
    ```
-   %APPDATA%\Autodesk\Revit\Addins\<your Revit version>\
+   %APPDATA%\Autodesk\Revit\Addins\<jouw Revit-versie>\
    ```
 
    - `FoundationProjectionToggle.dll`
    - `FoundationProjectionToggle.addin`
 
-   Use the dll built for that exact Revit version (2025 is a .NET 8 build). Upgrading from
-   v1.0.0 (Foundation Projection Toggle): overwrite both files; the Hide/Show button moves from
-   its own tab to the **IB Tools** tab.
+3. Start Revit en klik **Always Load** bij de vraag over de add-in *IB Tools*
+   (Ingenieursbureau Gemeente Amsterdam).
 
-3. Start Revit. When prompted about the add-in **IB Tools** (Ingenieursbureau Gemeente Amsterdam),
-   click **Always Load**.
+Het tabblad **IB Tools** verschijnt in het lint.
 
-The **IB Tools** tab appears in the ribbon.
+**Bijwerken:** overschrijf beide bestanden met die van de nieuwe release. Vanaf v1.0.0 (toen nog
+"Foundation Projection Toggle"): de knop Hide/Show verhuist van het tabblad Add-Ins (paneel
+Projectielijnen) naar het tabblad **IB Tools**, paneel Weergave.
 
-## Usage
+**Waarom heten de bestanden nog FoundationProjectionToggle?** Zo heette de add-in toen hij één knop
+had. De naam en het add-in-id blijven bewust gelijk zodat bijwerken alleen overschrijven is; zie
+[Hernoemen](#hernoemen-van-de-geleverde-bestanden-bewust-nog-niet).
 
-Open a floor plan, ceiling plan, section, elevation or 3D view and click **Hide/Show** in the
-**Weergave** panel. The button text and icon follow the state of the active view. It is disabled
-in views without Visibility/Graphics overrides (schedules, sheets, legends) and when a view
-template locks V/G.
+## Gebouwd voor
 
-The add-in detects the Revit language for the projection subcategory name: English, Dutch,
-German, Spanish, Italian, Portuguese, Chinese and Japanese.
+| Revit | Framework | Status |
+|---|---|---|
+| 2022, 2023, 2024 | net48 | bouwt; getest in Revit 2023 |
+| 2025 | net8.0-windows | bouwt; nog niet in Revit 2025 gedraaid |
+| 2026 | net8.0-windows | nog niet aangezet (`2026` toevoegen aan de ValidateSet in `build.ps1`; SDK-pakket 2026 bestaat; `ElementId.IntegerValue` bestaat niet meer in 2026) |
 
-### Remmingwerk
+## Indeling van de repo
 
-1. Draw the front face of the remmingwerk as one or more horizontal **model lines or arcs**. The
-   drawing direction decides the side: by default the piles go to the **right** of it, as in the
-   Dynamo script (the window also offers "left").
-2. Select the line(s) and click **Remmingwerk** (panel **Kademuren**); with nothing selected the
-   button asks you to pick them.
-3. In the window: NAP level, the five types (timber wrijfgording/wrijfstijl ship with IB Tools and
-   are loaded when missing; the steel gording, post and tube pile must be in the project and are
-   recognised by NLRS_C_hoogte / NLRS_C_breedte / NLRS_C_diameter), and the sizes. The green line
-   shows what will be placed.
-4. **Plaatsen** places everything in one step (one Ctrl+Z), selects it and reports counts, ids and
-   NAP heights.
-
-What it computes (mm; n rows, a = row spacing, b = wrijfgording width, p = pile spacing): stations
-floor(L/p)+1 at p, centred on the line; wrijfgordingen on the line at 0, a … (n−1)a; steel gordingen
-b to the right; steel posts b + ½·post depth to the right, line height up to (n−1)a; tube piles
-gording depth + b + ½D + 200 to the right, from the pile tip (relative to the NAP level) to
-(n−1)a + ½·gording width + overlength; wrijfstijlen on the line, length (n−1)a. Differences with
-Dynamo, on purpose: the pile tip is relative to the NAP level (Dynamo: to the line), rotations
-follow the exact line direction (Dynamo rounded and mirrored them, wrong for lines not along X),
-and on arcs offsets are radial and "right" is right of the drawing direction (Dynamo: outward).
-
-## Building from source
-
-Requires the .NET 8 SDK (it also builds the .NET Framework 4.8 targets).
-
-```powershell
-.\build.ps1 -NoDeploy                    # compile only (safe, never touches Revit)
-.\build.ps1 -NoDeploy -RevitVersion 2025
-.\build.ps1                              # build + deploy + start Revit 2023 (uses the test lock)
+```
+README.md                       dit bestand
+FoundationProjectionToggle.addin  manifest (wordt met de dll geïnstalleerd)
+build.ps1                       bouwen en (met testslot) deployen
+src/IBTools/
+  App.cs                        registreert alle tools op het lint, in deze volgorde
+  Shared/                       wat meerdere tools gebruiken: lint, vensters, resultaatvenster,
+                                klembord, logger, families laden, invoer van coördinaten
+  Tools/<Tool>/                 per tool: code, Resources/ (iconen, families), README.md,
+                                verify/ (testverslagen) en demo/ (video) waar van toepassing
+tests/IBTools.Tests/            unit-tests zonder Revit, map per tool
+tests/RevitHarness/             integratietests in een echte Revit, map per tool
+docs/                           TESTING.md, ONTWIKKELEN.md, demo/ (video van meerdere tools)
+scripts/                        testslot, demo-opnames, release.ps1
 ```
 
-`build.ps1` never closes a Revit it did not start itself. Deploying and testing in Revit go one
-session at a time via a lock file; see [docs/TESTING.md](docs/TESTING.md).
+## Bouwen en testen
 
-| Revit | Target framework | Status |
-|---|---|---|
-| 2022, 2023, 2024 | net48 | builds; 2023 tested in Revit |
-| 2025 | net8.0-windows | builds; not run (Revit 2025 not installed here) |
-| 2026 | net8.0-windows | not enabled yet (add `2026` to `build.ps1` ValidateSet; SDK package 2026 exists; `ElementId.IntegerValue` is removed in 2026) |
+Vereist de .NET 8 SDK (die bouwt ook de .NET Framework 4.8-versies).
 
-## Adding a button (for developers)
+```powershell
+dotnet build; dotnet test                # alles bouwen + unit-tests (zonder Revit)
+.\build.ps1 -NoDeploy                    # alleen compileren voor Revit 2023, raakt Revit nooit aan
+.\build.ps1 -NoDeploy -RevitVersion 2025
+.\build.ps1                              # bouwen + deployen + Revit 2023 starten (met testslot)
+.\scripts\release.ps1                    # tests + Release-zips voor 2022-2025 (publiceert niets)
+```
 
-- Ribbon: one line in `UI/RibbonManager.cs` → `CreateRibbon`:
-  `AddPushButton<MyCommand>(application, "Panel", "InternalName", "Label", "Tooltip", iconName: "my-icon", availability: typeof(ProjectDocumentAvailability));`
-  Panels are created on first use; icons are `UI/Resources/icons/<iconName>-32.png` / `-16.png`.
-- Availability: `ProjectDocumentAvailability` (project open, not in the family editor) or `ViewBasedAvailability`.
-- Input windows: derive from `UI/RevitWindow` (owned by Revit, Esc closes, `ShowModal()`), XAML root `<ui:RevitWindow>`.
-- Results: `ResultDialog.Show(uiapp, title, summary, details)` with selectable text and *Kopiëren naar klembord*.
-- Conditional compilation: `REVIT2023`, `REVIT2024`, `REVIT2025`, `REVIT2025_OR_GREATER`.
+`build.ps1` sluit nooit een Revit die het niet zelf heeft gestart. Deployen en testen in Revit gaan
+om de beurt via een slotbestand: [docs/TESTING.md](docs/TESTING.md). Een nieuwe tool toevoegen:
+[docs/ONTWIKKELEN.md](docs/ONTWIKKELEN.md).
 
-## Renaming the dll / manifest (separate step, not done yet)
+Logging staat standaard uit. Aanzetten: omgevingsvariabele `IBTOOLS_DEBUG=1` vóór het starten van
+Revit (of `.\build.ps1 -Debug`); logs in `%LOCALAPPDATA%\IBTools\logs\`.
 
-The assembly and manifest are still called `FoundationProjectionToggle` and the manifest keeps its
-`ClientId`. Renaming them (e.g. to `IBTools.dll` / `IBTools.addin`) must be one deliberate step:
-every install must delete the old `FoundationProjectionToggle.addin`, otherwise Revit finds two
-manifests and loads the add-in twice (or rejects the duplicate ClientId). Also update the logger
-folder, `build.ps1`, the csproj `AssemblyName` and the resource prefix in `IconLoader`.
+## Hernoemen van de geleverde bestanden (bewust nog niet)
+
+De code heet `IBTools` (map, project, namespaces), maar de geleverde bestanden heten nog
+`FoundationProjectionToggle.dll` en `FoundationProjectionToggle.addin` en het manifest houdt zijn
+`ClientId`. Gebruikers zien die naam niet: Revit toont "IB Tools". Hernoemen (bv. naar
+`IBTools.dll` / `IBTools.addin`) moet één bewuste stap zijn, samen met een installatiescript: elke
+installatie moet dan het oude `FoundationProjectionToggle.addin` verwijderen, anders vindt Revit
+twee manifesten en laadt de add-in dubbel of weigert hij het dubbele ClientId. Daarvoor aan te
+passen:
+
+- `AssemblyName` en het opt-in deploydoel (`DeployAddin`) in `src/IBTools/IBTools.csproj`;
+- de naam van het manifest en zijn `<Assembly>`;
+- `$DllName`/`$ManifestName` in `build.ps1` en `$dllName`/`$manifest` in `scripts/release.ps1`;
+- de oude ontwikkel-add-in `FoundationProjectionToggle.DevTools.dll` op de ontwikkel-pc verwijst
+  naar de assemblynaam `FoundationProjectionToggle`; na hernoemen werkt die niet meer, en dan kan
+  ook `src/IBTools/Shared/LegacyLogger.cs` weg.

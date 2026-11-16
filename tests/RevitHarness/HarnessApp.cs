@@ -7,9 +7,8 @@ using System.Text;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
-using FoundationProjectionToggle.Commands;
-using FoundationProjectionToggle.Services;
-using FoundationProjectionToggle.UI;
+using IBTools.Shared;
+using IBTools.Tools.Modelpunt;
 
 namespace IBTools.RevitHarness
 {
