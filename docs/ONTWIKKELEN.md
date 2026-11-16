@@ -29,7 +29,8 @@ IB Tools is één add-in (één dll, één tabblad). Elke tool staat in een eige
    familie ook in de `InlineData` van `Embedded_family_exists_in_its_tool` (EmbeddedResourceTests).
 6. **README.md** in de toolmap, Nederlands, met de kopjes: Wat doet het / Vervangt / Wat heb je
    nodig / Zo werkt het / Wat krijg je / Verschillen met Dynamo / Beperkingen / Demo en test. Zet de
-   tool in de tabel in de hoofd-README.
+   tool in de tabel in de hoofd-README en in de toollijst van `scripts/release/LEESMIJ.template.txt`
+   (die gaat in elke release-zip).
 7. **Tests**: unit-tests in `tests/IBTools.Tests/<Tool>/` (het testproject linkt `Tools/*/Core/**`
    automatisch; andere bestanden expliciet in `IBTools.Tests.csproj`). Een Revit-test als job in
    `tests/RevitHarness/<Tool>/`; laat `HarnessApp.OnStartup` hem kiezen aan een markeerbestand in
@@ -58,6 +59,25 @@ IB Tools is één add-in (één dll, één tabblad). Elke tool staat in een eige
 
 - `dotnet build` / `dotnet test` in de hoofdmap; `.\build.ps1 -NoDeploy [-RevitVersion 2025]`.
 - Testen in Revit om de beurt met het slot: [TESTING.md](TESTING.md).
-- `.\scripts\release.ps1`: tests en per Revit-versie een zip met de dll en het manifest in
-  `%LOCALAPPDATA%\IBTools\release\v<versie>\`. Het publiceert niets; een GitHub-release maak je
-  daarna zelf (versie staat in `src/IBTools/IBTools.csproj`).
+- `.\scripts\release.ps1`: tests en per Revit-versie een zip in
+  `%LOCALAPPDATA%\IBTools\release\v<versie>\` met precies vier bestanden: de dll, het manifest,
+  `Installeren.cmd` en `LEESMIJ.txt`. Het publiceert niets; een GitHub-release maak je daarna zelf
+  (versie staat in `src/IBTools/IBTools.csproj`).
+- `Installeren.cmd` en `LEESMIJ.txt` komen uit `scripts/release/*.template.*`; `{{REVIT}}`,
+  `{{VERSION}}`, `{{DLL}}` en `{{ADDIN}}` vult `scripts/release/ReleaseFiles.ps1` in (gewoon ASCII,
+  CRLF; dat bestand houdt ook de namen van de geleverde bestanden bij). Het
+  installatiescript is een cmd-kop die de PowerShell onder de regel `##PS-START` uitvoert; die
+  markering mag maar één keer in het bestand staan. Het kopieert naar
+  `%APPDATA%\Autodesk\Revit\Addins\<jaar>\` en haalt de Windows-downloadblokkade
+  (`Zone.Identifier`) eraf: zonder dat weigert Revit 2023 de dll ("External Tool Failure").
+  Exitcodes: 0 klaar, 2 zip niet uitgepakt, 3 Revit-versie niet gevonden, 4 dll in gebruik (Revit
+  draait), 5 mislukt (gaat het omwisselen mis, dan wordt teruggedraaid wat al was omgewisseld;
+  de melding zegt of dat gelukt is), 6 IB Tools staat al op een andere plek (een ander manifest met
+  dezelfde ClientId in `%ProgramData%\Autodesk\Revit\Addins\<jaar>\` of in de eigen map; dan
+  verandert het niets).
+- Na een wijziging aan het installatiescript: `.\scripts\release.ps1`, dan
+  `.\tests\Release\test-install.ps1` (zonder Revit, eigen APPDATA in %TEMP%: alle jaren, bijwerken,
+  Revit ontbreekt, dll in gebruik, fout halverwege, al elders geïnstalleerd, zip niet uitgepakt) en
+  met het testslot
+  `.\tests\Release\revit-check-install.ps1` (echte Revit 2023: geblokkeerde bestanden tegenover
+  Installeren.cmd; zet daarna de oorspronkelijke bestanden in de Addins-map terug).
