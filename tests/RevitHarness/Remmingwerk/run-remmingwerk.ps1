@@ -7,14 +7,14 @@
     lock is ours it ALWAYS releases it (closes only its own Revit) and removes the harness from the
     Addins folder again.
 .EXAMPLE
-    $env:IBTOOLS_LOCK_OWNER = "<thread name>"; .\tests\RevitHarness\run-remmingwerk.ps1
+    $env:IBTOOLS_LOCK_OWNER = "<thread name>"; .\tests\RevitHarness\Remmingwerk\run-remmingwerk.ps1
 #>
 param(
     [string]$Source = "C:\Development\VibeModel\demo_out\video\kade\Prinsengracht kademuur 2.0002.rvt",
     [int]$TimeoutMinutes = 30
 )
 $ErrorActionPreference = "Stop"
-$repo = Resolve-Path (Join-Path $PSScriptRoot "..\..")
+$repo = Resolve-Path (Join-Path $PSScriptRoot "..\..\..")
 $root = Join-Path $env:LOCALAPPDATA "IBTools\test\remmingwerk"
 $job = Join-Path $root "job"
 $model = Join-Path $root "Remmingwerk test.rvt"

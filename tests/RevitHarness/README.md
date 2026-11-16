@@ -1,6 +1,11 @@
 # Revit-testharnas (IB Tools)
 
-Integratietest in een echte Revit 2023 voor **Modelpunt op coördinaat**. Geen onderdeel van de add-in.
+Integratietests in een echte Revit 2023, één job per tool. Geen onderdeel van de add-in.
+`HarnessApp.cs` is het startpunt (en de Modelpunt-job); de bestanden per job staan in een submap
+(`Modelpunt/`, `Remmingwerk/`).
+
+## Modelpunt op coördinaat
+
 Het harnas doet alleen iets als `IBTOOLS_HARNESS_JOB` naar een (lege) jobmap wijst; een andere Revit
 die het toevallig laadt, merkt er niets van.
 
@@ -9,7 +14,7 @@ Wat het doet (`HarnessApp.cs`), op een **kopie** van een model:
 - A. hoek van de kademuur → gedeelde coördinaten zoals Report Shared Coordinates ze geeft → punt plaatsen → teruglezen (≤ 1 mm);
 - B. weigermelding zonder RD-coördinaten (teruggedraaid);
 - C. variant: ware noorden +10° en projectbasispunt 100 m / 40 m van de interne oorsprong → A opnieuw, plus waar de Dynamo-formule zou uitkomen;
-- D. de echte knop (PostCommand) met de tweede hoek op het klembord; `ui-test.ps1` controleert en bevestigt het venster via UI Automation.
+- D. de echte knop (PostCommand) met de tweede hoek op het klembord; `Modelpunt/ui-test.ps1` controleert en bevestigt het venster via UI Automation.
 
 Resultaten: `results.txt`, `ui-result.txt`, screenshots en de opgeslagen variant in de jobmap.
 
@@ -24,14 +29,14 @@ Copy-Item tests\RevitHarness\bin\Release\IBTools.RevitHarness.dll, tests\RevitHa
 .\build.ps1 -Deploy -OpenFile "<kopie van het model>.rvt"     # neemt het slot, start Revit
 # zodra started.txt er is: manifest weer weghalen, zodat andere sessies het niet laden
 Remove-Item "$addins\IBTools.RevitHarness.addin"
-.\tests\RevitHarness\ui-test.ps1 -Job $job -RevitPid (Get-Content "$job\started.txt")
+.\tests\RevitHarness\Modelpunt\ui-test.ps1 -Job $job -RevitPid (Get-Content "$job\started.txt")
 # wacht op done.txt, dan:
 .\scripts\revit-lock.ps1 release; Remove-Item "$addins\IBTools.RevitHarness.dll"
 ```
 
 ## Remmingwerk
 
-Zelfde harnas, andere job: een jobmap met `remmingwerk.txt` draait `RemmingwerkHarness.cs`.
+Zelfde harnas, andere job: een jobmap met `remmingwerk.txt` draait `Remmingwerk/RemmingwerkHarness.cs`.
 Alles in één script (testslot, kopie van het kademodel, staaltypen van K: of de lokale cache,
 harnas deployen/weghalen, UI-test, `release` in `finally`). Het slot komt **eerst**: is het bezet
 door een andere sessie, dan stopt het script met exit 2 zonder iets aan te raken (geen jobmap, niets
@@ -39,7 +44,7 @@ in de Addins-map):
 
 ```powershell
 $env:IBTOOLS_LOCK_OWNER = "<threadnaam>"
-.\tests\RevitHarness\run-remmingwerk.ps1
+.\tests\RevitHarness\Remmingwerk\run-remmingwerk.ps1
 ```
 
 Wat het controleert (`%LOCALAPPDATA%\IBTools\test\remmingwerk\job\results.txt`, regels `OK`/`FOUT`):
@@ -52,7 +57,7 @@ Wat het controleert (`%LOCALAPPDATA%\IBTools\test\remmingwerk\job\results.txt`, 
   verwachtingen (≤ 1 mm), hoogtes t.o.v. NAP, Cross-Section Rotation, z Justification en de
   IB_wrijfstijl-parameters; bounding boxes per onderdeel in het log;
 - F2. een type dat niet bestaat: geweigerd, 0 elementen;
-- UI: lijn U geselecteerd, echte knop (PostCommand); `ui-test-remmingwerk.ps1` leest het venster
+- UI: lijn U geselecteerd, echte knop (PostCommand); `Remmingwerk/ui-test-remmingwerk.ps1` leest het venster
   uit, klikt Plaatsen, leest het resultaat en doet Undo; het harnas telt na afloop weer het
   aantal van vóór de knop.
 
