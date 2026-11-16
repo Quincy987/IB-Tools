@@ -40,7 +40,8 @@ testverslag. Demo-video van Worksets, Modelpunt en Paalcoördinaten:
 Het tabblad **IB Tools** verschijnt in het lint.
 
 **Bijwerken:** overschrijf beide bestanden met die van de nieuwe release. Vanaf v1.0.0 (toen nog
-"Foundation Projection Toggle"): de knop Hide/Show verhuist van zijn eigen tabblad naar **IB Tools**.
+"Foundation Projection Toggle"): de knop Hide/Show verhuist van het tabblad Add-Ins (paneel
+Projectielijnen) naar het tabblad **IB Tools**, paneel Weergave.
 
 **Waarom heten de bestanden nog FoundationProjectionToggle?** Zo heette de add-in toen hij één knop
 had. De naam en het add-in-id blijven bewust gelijk zodat bijwerken alleen overschrijven is; zie

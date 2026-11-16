@@ -53,17 +53,25 @@ namespace IBTools
                 var localization = new LocalizationService();
                 var visibility = new CategoryVisibilityService(localization);
 
-                // Ribbon: one block per tool. The order here is the order of the panels/buttons.
-                // Projectielijnen (panel Weergave): stateful Hide/Show button
+                // Ribbon: one entry per tool (Tools/<Tool>/). The order of these lines is the order
+                // of the panels and buttons on the IB Tools tab; do not reorder released buttons.
+
+                // Weergave › Hide/Show (Projectielijnen): stateful, follows the active view
                 _toggleButton = new ProjectionToggleButton(visibility);
                 _toggleButton.Create(application);
+
+                // Coördinaten › Paalcoördinaten
                 RibbonManager.AddPushButton<WritePileCoordinatesCommand>(application, "Coördinaten", "PileCoordinates", "Paalcoördinaten", "Schrijft de RD-coördinaten (m, 3 decimalen) van elke paal in X-/Y-coördinaat_funderingspaal. Selectie: alleen die palen, anders het hele model.", iconName: "pilecoords", availability: typeof(ProjectDocumentAvailability));
 
-                // --- IB Tools buttons (one line each) ---
+                // Model › Worksets
                 RibbonManager.AddPushButton<CreateIbWorksetsCommand>(application, "Model", "IbWorksets", "Worksets", "Zet worksharing aan (indien nodig) en maakt de IB-standaard worksets 01 t/m 06.", iconName: "worksets", availability: typeof(ProjectDocumentAvailability));
+
+                // Coördinaten › Modelpunt
                 RibbonManager.AddPushButton<PlaceCoordinatePointCommand>(application, "Coördinaten", "CoordinatePoint", "Modelpunt",
                     "Plaatst een coördinaatpunt op een RD-coördinaat en NAP-hoogte (via de gedeelde coördinaten van het project).",
                     iconName: "coordpoint", availability: typeof(ProjectDocumentAvailability));
+
+                // Kademuren › Remmingwerk
                 RibbonManager.AddPushButton<RemmingwerkCommand>(application, "Kademuren", "Remmingwerk", "Remmingwerk",
                     "Plaatst een standaard remmingwerk (buispalen, stalen stijlen en gordingen, wrijfgordingen en wrijfstijlen) langs de gekozen modellijn(en). De tekenrichting bepaalt de kant; alles in één Ctrl+Z.",
                     iconName: "remmingwerk", availability: typeof(ProjectDocumentAvailability));

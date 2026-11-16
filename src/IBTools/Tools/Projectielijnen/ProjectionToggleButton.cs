@@ -36,7 +36,7 @@ namespace IBTools.Tools.Projectielijnen
         /// </summary>
         public void Create(UIControlledApplication application)
         {
-            Logger.Info("Creating ribbon UI");
+            Logger.Info("Creating the Hide/Show button (Projectielijnen)");
 
             try
             {
@@ -63,11 +63,11 @@ namespace IBTools.Tools.Projectielijnen
                 _button.Image = _iconOnSmall;
 
                 application.ViewActivated += OnViewActivated;
-                Logger.Info("Ribbon created; ViewActivated handler registered");
+                Logger.Info("Hide/Show button created; ViewActivated handler registered");
             }
             catch (Exception ex)
             {
-                Logger.Error("Failed to create ribbon UI", ex);
+                Logger.Error("Failed to create the Hide/Show button", ex);
                 throw; // fail add-in startup
             }
         }

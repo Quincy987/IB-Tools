@@ -45,7 +45,10 @@ try {
 
         # Sanity: right version and right framework (2025 = .NET 8, the rest = .NET Framework 4.8).
         $fileVersion = (Get-Item $dll).VersionInfo.FileVersion
-        if (-not $fileVersion.StartsWith($version)) { throw "Revit ${v}: dll-versie $fileVersion is niet $version." }
+        $fv = [version]$fileVersion; $want = [version]$version
+        if ($fv.Major -ne $want.Major -or $fv.Minor -ne $want.Minor -or $fv.Build -ne $want.Build) {
+            throw "Revit ${v}: dll-versie $fileVersion is niet $version."
+        }
         $text = [System.Text.Encoding]::ASCII.GetString([System.IO.File]::ReadAllBytes($dll))
         $expected = if ([int]$v -ge 2025) { ".NETCoreApp,Version=v8.0" } else { ".NETFramework,Version=v4.8" }
         if (-not $text.Contains($expected)) { throw "Revit ${v}: dll is niet gebouwd voor $expected." }

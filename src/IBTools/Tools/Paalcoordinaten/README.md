@@ -9,9 +9,7 @@ parameters `X-coördinaat_funderingspaal` en `Y-coördinaat_funderingspaal`.
 
 ## Vervangt
 
-Dynamo-script **Funderingspalen_coordinaten v1.0** (Q. de Klerk, 2025, op basis van het IBR-script).
-Dat nam altijd het hele model, alleen families met "paal" in de naam, en rekende zelf om via het
-projectbasispunt.
+Dynamo-script **Funderingspalen_coordinaten v1.0** (2025, op basis van het IBR-script).
 
 ## Wat heb je nodig
 
@@ -31,6 +29,15 @@ Een rapport per paal: geschreven (oude → nieuwe waarde), ongewijzigd of overge
 met *Kopiëren naar klembord*. Alleen waarden die echt veranderen worden geschreven, in één stap
 (één Ctrl+Z). Een lengteparameter krijgt de meterwaarde in de lengte-eenheid van het project, net
 als in het Dynamo-script, zodat de palenstaat dezelfde getallen blijft tonen.
+
+## Verschillen met Dynamo
+
+- Het script nam altijd het hele model; de knop werkt ook op alleen de geselecteerde palen.
+- Het script nam alleen families met "paal" in de naam; de knop neemt elke fundering die de twee
+  parameters heeft.
+- Het script rekende zelf om via het projectbasispunt; de knop gebruikt de omrekening van Revit en
+  controleert die eerst op het basispunt.
+- De knop schrijft alleen wat verandert en geeft een rapport per paal.
 
 ## Beperkingen
 

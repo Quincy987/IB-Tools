@@ -9,10 +9,7 @@ NAP-hoogte, via de gedeelde coördinaten van het project.
 
 ## Vervangt
 
-Dynamo-script **Modelpoint op coordinaat v1.1** (Ingenieursbureau, M. van As, 2022). Dat vroeg X en
-Y in millimeters, een handmatig gekozen type, plaatste altijd op hoogte 0 en rekende zelf om via
-het projectbasispunt en "Angle to True North". In een gedraaid project kwam het punt daardoor tot
-ruim 18 m naast de bedoelde plek (gemeten, zie het verslag).
+Dynamo-script **Modelpoint op coordinaat v1.1** (Ingenieursbureau, 2022).
 
 ## Wat heb je nodig
 
@@ -36,6 +33,16 @@ ruim 18 m naast de bedoelde plek (gemeten, zie het verslag).
 Een resultaatvenster met de gevraagde en de teruggelezen coördinaten, Revits eigen omrekening, de
 afwijking in mm, het type en het element-id, plus de controles van de gedeelde coördinaten. Het
 nieuwe punt is geselecteerd. Eén Ctrl+Z maakt alles ongedaan, ook het laden van de familie.
+
+## Verschillen met Dynamo
+
+- Het script rekende zelf om via het projectbasispunt en "Angle to True North". In een gedraaid
+  project kwam het punt daardoor tot ruim 18 m naast de bedoelde plek (gemeten, zie het verslag).
+  De knop gebruikt de gedeelde coördinaten van Revit zelf en controleert het resultaat.
+- Het script vroeg X en Y in millimeters en had geen invoer voor de hoogte; de knop neemt meters of
+  millimeters en een NAP-hoogte, en leest ze van het klembord.
+- Het type koos je in het script zelf; de knop kiest het bij de schaal van de view. De familie hoefde
+  in het script al in het project te zitten; de knop laadt hem zo nodig.
 
 ## Beperkingen
 

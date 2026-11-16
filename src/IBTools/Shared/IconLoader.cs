@@ -10,7 +10,7 @@ namespace IBTools.Shared
     /// </summary>
     public static class IconLoader
     {
-        public const string ResourcePrefix = "IBTools.icons.";
+        private const string ResourcePrefix = "IBTools.icons.";
 
         /// <summary>
         /// Loads one embedded icon, e.g. <c>Load("projection-on-32.png")</c>.

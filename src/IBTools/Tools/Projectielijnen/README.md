@@ -12,8 +12,8 @@ gesloten oog als ze verborgen zijn. Bij elke andere view past de knop zich aan.
 ## Vervangt
 
 Dynamo-script **Projectielijnen funderingspalen zichtbaar v1.0**. Dit is de knop van de eerste
-release (v1.0.0, toen nog "Foundation Projection Toggle" op een eigen tabblad) en is al bij
-gebruikers uitgerold.
+release (v1.0.0, toen nog "Foundation Projection Toggle", als paneel Projectielijnen op het
+tabblad Add-Ins) en is al bij gebruikers uitgerold.
 
 ## Wat heb je nodig
 
@@ -28,6 +28,11 @@ Een view met Visibility/Graphics: plattegrond, plafondplan, doorsnede, aanzicht 
 
 De projectielijnen van de funderingen in die ene view gaan uit of aan. Andere views veranderen
 niet. Ctrl+Z maakt het ongedaan. Er komt geen melding; de knop zelf is de terugkoppeling.
+
+## Verschillen met Dynamo
+
+Het script moest je via Dynamo Player starten; de knop werkt met één klik en laat per view zien of
+de lijnen nu aan of uit staan.
 
 ## Beperkingen
 

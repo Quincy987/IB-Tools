@@ -17,10 +17,8 @@ Zet worksharing aan als dat nog niet zo is en maakt de IB-standaardworksets:
 
 ## Vervangt
 
-Dynamo-script **IB_Worksets v1.0** (Maikel van As, op basis van Rotterdam). Dat hernoemde de twee
-standaardworksets en las de overige namen uit `IB_Worksets.xlsx`; worksharing moest al aan staan
-en het had het pakket ParametricMonkey nodig. De lijst zit nu in de add-in, de Excel is niet meer
-nodig.
+Dynamo-script **IB_Worksets v1.0** (op basis van de Rotterdamse versie). Dat hernoemde de twee
+standaardworksets en las de overige namen uit `IB_Worksets.xlsx`.
 
 ## Wat heb je nodig
 
@@ -46,6 +44,14 @@ Was het model al workshared:
   Ctrl+Z).
 
 Na het aanzetten van worksharing: sla het model op, dan wordt het het centrale model.
+
+## Verschillen met Dynamo
+
+- Geen Excel meer: de lijst zit in de add-in.
+- Het script had worksharing al aan nodig; de knop zet het zelf aan (na bevestiging).
+- Het pakket ParametricMonkey is niet meer nodig.
+- Welke workset de levels en grids bevat, bepaalt de knop aan een level of grid, niet aan de naam
+  van de workset.
 
 ## Beperkingen
 
