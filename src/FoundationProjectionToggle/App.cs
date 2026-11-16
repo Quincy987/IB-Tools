@@ -31,7 +31,7 @@ namespace FoundationProjectionToggle
     /// </summary>
     public class App : IExternalApplication
     {
-        private RibbonManager _ribbonManager;
+        private ProjectionToggleButton _toggleButton;
 
         /// <summary>
         /// Called when Revit loads the add-in.
@@ -52,9 +52,10 @@ namespace FoundationProjectionToggle
                 var localization = new LocalizationService();
                 var visibility = new CategoryVisibilityService(localization);
 
-                // Create ribbon UI
-                _ribbonManager = new RibbonManager(visibility);
-                _ribbonManager.CreateRibbon(application);
+                // Ribbon: one block per tool. The order here is the order of the panels/buttons.
+                // Projectielijnen (panel Weergave): stateful Hide/Show button
+                _toggleButton = new ProjectionToggleButton(visibility);
+                _toggleButton.Create(application);
                 RibbonManager.AddPushButton<WritePileCoordinatesCommand>(application, "Coördinaten", "PileCoordinates", "Paalcoördinaten", "Schrijft de RD-coördinaten (m, 3 decimalen) van elke paal in X-/Y-coördinaat_funderingspaal. Selectie: alleen die palen, anders het hele model.", iconName: "pilecoords", availability: typeof(Availability.ProjectDocumentAvailability));
 
                 // --- IB Tools buttons (one line each) ---
@@ -69,7 +70,7 @@ namespace FoundationProjectionToggle
                 // Set references on command for access during execution
                 // This is a simple alternative to full DI container
                 ToggleProjectionCommand.VisibilityService = visibility;
-                ToggleProjectionCommand.RibbonManager = _ribbonManager; // For immediate button state update
+                ToggleProjectionCommand.ToggleButton = _toggleButton; // For immediate button state update
 
                 Logger.Info("Add-in startup completed successfully");
                 return Result.Succeeded;
@@ -94,12 +95,12 @@ namespace FoundationProjectionToggle
 
             try
             {
-                // Cleanup ribbon manager (unregister events)
-                _ribbonManager?.Cleanup(application);
+                // Cleanup the toggle button (unregister events)
+                _toggleButton?.Cleanup(application);
 
                 // Clear static references to prevent memory leaks
                 ToggleProjectionCommand.VisibilityService = null;
-                ToggleProjectionCommand.RibbonManager = null;
+                ToggleProjectionCommand.ToggleButton = null;
 
                 Logger.Info("Add-in shutdown completed");
             }

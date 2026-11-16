@@ -31,9 +31,9 @@ namespace FoundationProjectionToggle.Commands
         // This avoids creating new instances on every command execution
         internal static CategoryVisibilityService VisibilityService { get; set; }
 
-        // Reference to RibbonManager for updating button state after toggle
+        // Reference to the ribbon button for updating its state after toggle
         // This ensures immediate visual feedback (Decision 2: Hybrid approach)
-        internal static RibbonManager RibbonManager { get; set; }
+        internal static ProjectionToggleButton ToggleButton { get; set; }
 
         /// <summary>
         /// Executes the toggle command.
@@ -68,7 +68,7 @@ namespace FoundationProjectionToggle.Commands
                 // Update button state IMMEDIATELY after toggle
                 // This provides instant visual feedback without waiting for view switch
                 var activeView = commandData.Application.ActiveUIDocument?.Document?.ActiveView;
-                RibbonManager?.UpdateButtonState(activeView);
+                ToggleButton?.UpdateButtonState(activeView);
 
                 // NO modal dialog for success - the button state change IS the feedback
                 // Modal dialogs interrupt workflow for a simple toggle operation

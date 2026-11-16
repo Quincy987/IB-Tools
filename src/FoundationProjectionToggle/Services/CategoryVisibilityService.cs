@@ -235,7 +235,7 @@ namespace FoundationProjectionToggle.Services
         /// <remarks>
         /// <para>
         /// <b>Usage:</b>
-        /// Called by RibbonManager to update button state on view activation.
+        /// Called by ProjectionToggleButton to update button state on view activation.
         /// This is a query-only method - no modifications, no transaction needed.
         /// </para>
         ///
