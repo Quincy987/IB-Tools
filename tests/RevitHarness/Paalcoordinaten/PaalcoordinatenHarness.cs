@@ -269,16 +269,21 @@ namespace IBTools.RevitHarness
                 }
                 t.Commit();
             }
+            var placed = piles.Select(id => Fmt(ReadX(doc, id)) + "/" + Fmt(ReadY(doc, id))).ToList();
+            Log("F. Waarden na plaatsen (standaard uit de familie): " + string.Join(", ", placed));
             Move(doc, piles[0], new XYZ(1, 1, 0) * Ft, "harness: F verplaatsen");
-            var emptyF = piles.Count(id => ReadX(doc, id) == null && ReadY(doc, id) == null);
-            Check(emptyF == 4, "F. Niet op coördinaten: na plaatsen en verplaatsen 4/4 palen nog leeg (gevonden " + emptyF + ")");
+            var after = piles.Select(id => Fmt(ReadX(doc, id)) + "/" + Fmt(ReadY(doc, id))).ToList();
+            var staleF = PileCoordinateService.Evaluate(doc, null, PileScope.WholeModel);
+            Check(placed.SequenceEqual(after) && staleF.PendingCount >= 3,
+                "F. Niet op coördinaten: plaatsen en verplaatsen schrijft niets (" + staleF.PendingCount + " palen zouden met de knop veranderen)");
             var linesF = IbLogSince(mark).Where(l => l.Contains("Paalcoördinaten updater:")).ToList();
             foreach (var l in linesF) Log("   log: " + l);
             Check(linesF.Count == 1 && linesF[0].Contains("staat niet op coördinaten"),
                 "F. Eén logregel 'staat niet op coördinaten' voor twee transacties (gevonden " + linesF.Count + ")");
 
-            // A. On coordinates, with the updater switched off; then the service like the button.
-            UpdaterRegistry.DisableUpdater(updaterId);
+            // A0. Put the model on coordinates (true north +10°, RD position, base point moved):
+            //     a coordinate-system change, so the updater writes every pile.
+            mark = IbLogLength();
             using (var t = new Transaction(doc, "harness: op coördinaten"))
             {
                 t.Start();
@@ -288,9 +293,19 @@ namespace IBTools.RevitHarness
                 ElementTransformUtils.MoveElement(doc, bp.Id, new XYZ(100 * Ft, 40 * Ft, 0));
                 t.Commit();
             }
-            Check(piles.All(id => ReadX(doc, id) == null), "A. Updater uit: op coördinaten zetten schrijft niets");
-            UpdaterRegistry.EnableUpdater(updaterId);
             LogCoordinates(doc, "op coördinaten");
+            foreach (var l in UpdaterLines(mark, doc)) Log("   log: " + l);
+            CheckAll(doc, piles, "A0. Op coördinaten gezet, updater:");
+
+            // A. The service like the button: make all values wrong (a parameter edit does not
+            //    start the updater), then the whole model.
+            using (var t = new Transaction(doc, "harness: A fout"))
+            {
+                t.Start();
+                foreach (var id in piles) WriteX(doc, id, WrongX);
+                t.Commit();
+            }
+            Check(piles.All(id => Math.Abs((ReadX(doc, id) ?? 0) - WrongX) < 1e-6), "A. Met de hand gewijzigde X blijft staan (updater reageert niet op parameters)");
             var evalA = PileCoordinateService.Evaluate(doc, null, PileScope.WholeModel);
             Check(evalA.AllowsAutomaticWrite, "A. Model op coördinaten, zelftest geslaagd");
             PileCoordinateService.ApplyInTransaction(doc, evalA);
@@ -655,23 +670,25 @@ namespace IBTools.RevitHarness
                 "IBTools", "logs", "log_" + DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) + ".txt");
         }
 
+        /// <summary>Number of lines in the IB Tools log now (a mark for <see cref="IbLogSince"/>).</summary>
         private static long IbLogLength()
         {
-            var f = IbLogFile();
-            return File.Exists(f) ? new FileInfo(f).Length : 0;
+            return ReadIbLog().Count;
         }
 
         private static List<string> IbLogSince(long mark)
         {
+            return ReadIbLog().Skip((int)mark).ToList();
+        }
+
+        private static List<string> ReadIbLog()
+        {
             var f = IbLogFile();
             if (!File.Exists(f)) return new List<string>();
             using (var s = new FileStream(f, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+            using (var r = new StreamReader(s, Encoding.UTF8))
             {
-                s.Seek(Math.Min(mark, s.Length), SeekOrigin.Begin);
-                using (var r = new StreamReader(s, Encoding.UTF8))
-                {
-                    return r.ReadToEnd().Split('\n').Select(l => l.TrimEnd('\r')).Where(l => l.Length > 0).ToList();
-                }
+                return r.ReadToEnd().Split('\n').Select(l => l.TrimEnd('\r')).Where(l => l.Length > 0).ToList();
             }
         }
 
