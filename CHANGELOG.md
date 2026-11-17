@@ -13,7 +13,9 @@
     waarvan de coördinaten niet meer kloppen of leeg zijn: *Nu bijwerken* of *Niet nu*.
   De automatische update is optioneel geregistreerd: collega's zonder IB Tools krijgen geen
   melding. `IBTOOLS_PILECHECK=0` zet de vraag bij openen uit (`build.ps1` doet dat voor de Revit die
-  het start). Revit-test: `tests/RevitHarness/Paalcoordinaten/run-paalcoordinaten.ps1`.
+  het start). Revit-test: `tests/RevitHarness/Paalcoordinaten/run-paalcoordinaten.ps1`
+  (47/47 in Revit 2023, 2/2 in een Revit zonder IB Tools; 2022, 2024 en 2025 alleen gecompileerd),
+  verslag in `src/IBTools/Tools/Paalcoordinaten/verify/paalcoordinaten-automatisch-2026-11-17.md`.
 
 ## v2.1.0 — Installatiescript in elke release-zip (2026-11-16)
 
