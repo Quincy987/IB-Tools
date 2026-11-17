@@ -40,7 +40,8 @@ namespace IBTools.Tools.Paalcoordinaten
         /// <summary>TaskDialog id, visible in DialogBoxShowing (test harness).</summary>
         public const string DialogId = "IBTools_PileCoordinatesOpenCheck";
 
-        public const string Title = "IB Tools: paalcoördinaten";
+        /// <summary>Revit shows add-in task dialogs as "IB Tools - &lt;title&gt;".</summary>
+        public const string Title = "Paalcoördinaten";
 
         private readonly List<Document> _pending = new List<Document>();
         private UIControlledApplication _application;

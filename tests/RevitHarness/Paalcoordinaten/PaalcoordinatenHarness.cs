@@ -406,8 +406,10 @@ namespace IBTools.RevitHarness
             var doc = PaalDoc(active);
             Log("G1. Dialogen: " + _ourDialogs.Count + (_ourDialogs.Count > 0 ? " | " + _ourDialogs[0] : ""));
             Check(_ourDialogs.Count == 1, "G1. Bij openen precies één vraag");
-            var expected = "Van 1 van de " + _pileCount + " palen kloppen de X-/Y-coördinaten niet meer";
-            Check(_ourDialogs.Count == 1 && _ourDialogs[0].Contains(expected), "G1. Vraag noemt '" + expected + "'");
+            // DialogBoxShowing only gives the main instruction; the counts are in the log (the
+            // sentence built from them is unit-tested, the UI test reads it from the real dialog).
+            var counts = _pileCount + " palen met coördinaatparameters, 1 verouderd (1 schrijfbaar, 0 geblokkeerd); vraag getoond";
+            Check(IbLogSince(_logMark).Any(l => l.Contains("'paal'") && l.Contains(counts)), "G1. Log: '" + counts + "'");
             Check(doc != null && Math.Abs((ReadX(doc, WrongPile) ?? 0) - WrongX) < 1e-6, "G1. 'Niet nu': foute X ongewijzigd");
             LogIb("G1");
         }

@@ -1,8 +1,9 @@
 <#
 .SYNOPSIS
     UI half of the Paalcoordinaten harness (case G2): waits for ui-ready.txt, finds the
-    open-check question "IB Tools: paalcoordinaten" of the test Revit, takes a screenshot, clicks
-    "Nu bijwerken" (UI Automation), then reads the report window "Paalcoordinaten" (summary +
+    open-check question "IB Tools - Paalcoordinaten" of the test Revit (a Win32 task dialog),
+    takes a screenshot, clicks "Nu bijwerken" (BM_CLICK on the command link: it has no UI
+    Automation Invoke pattern), then reads the report window "Paalcoordinaten" (summary +
     details), takes a screenshot, closes it and writes ui-done.txt.
 .EXAMPLE
     .\ui-test-paalcoordinaten.ps1 -Job C:\...\job -RevitPid 12345
@@ -15,12 +16,17 @@ param(
 
 $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, System.Drawing, System.Windows.Forms
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public static class IbClick { [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, uint m, IntPtr w, IntPtr l); }
+"@
 $AE = [System.Windows.Automation.AutomationElement]
 $TS = [System.Windows.Automation.TreeScope]
 $out = Join-Path $Job "ui-result.txt"
 # Titles with the o-umlaut, written as a char so this file can stay ASCII (PowerShell 5.1).
 $oe = [char]0x00F6
-$QuestionTitle = "IB Tools: paalco${oe}rdinaten"
+$QuestionTitle = "IB Tools - Paalco${oe}rdinaten"   # Revit puts the add-in name in front
 $ReportTitle = "Paalco${oe}rdinaten"
 
 function Say([string]$s) { Add-Content -Path $out -Value ((Get-Date -Format "HH:mm:ss") + " " + $s) -Encoding UTF8 }
@@ -78,11 +84,11 @@ try {
     Say ("Vraag: " + ($texts -join " | "))
     Shot $q "ui-vraag.png"
 
-    $buttons = $q.FindAll($TS::Descendants,
-        (New-Object System.Windows.Automation.PropertyCondition($AE::ControlTypeProperty, [System.Windows.Automation.ControlType]::Button)))
-    $link = $buttons | Where-Object { $_.Current.Name -like "Nu bijwerken*" } | Select-Object -First 1
-    if (-not $link) { throw ("Knop 'Nu bijwerken' niet gevonden; knoppen: " + (($buttons | ForEach-Object { $_.Current.Name }) -join " | ")) }
-    $link.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+    # Task dialog command links are Win32 child windows (class CCCommandLink, UIA type Pane).
+    $all = $q.FindAll($TS::Descendants, [System.Windows.Automation.Condition]::TrueCondition)
+    $link = $all | Where-Object { $_.Current.Name -like "Nu bijwerken*" } | Select-Object -First 1
+    if (-not $link -or $link.Current.NativeWindowHandle -eq 0) { throw ("'Nu bijwerken' niet gevonden; elementen: " + (($all | ForEach-Object { $_.Current.Name }) -join " | ")) }
+    [IbClick]::PostMessage([IntPtr]$link.Current.NativeWindowHandle, 0x00F5, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null  # BM_CLICK
     Say "'Nu bijwerken' geklikt"
 
     $res = Find-Top $ReportTitle "DetailsBox" 180
