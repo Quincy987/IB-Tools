@@ -28,10 +28,13 @@ namespace IBTools.Tools.Paalcoordinaten
     /// </remarks>
     public sealed class PileCoordinateUpdater : IUpdater
     {
-        /// <summary>Fixed id of this updater (with the add-in id it forms the UpdaterId).</summary>
-        public static readonly Guid UpdaterGuid = new Guid("6C3B7E1A-4F25-4D8B-9A61-2E7F0C5D8B34");
+        /// <summary>Fixed id of this updater (with the add-in id it forms the UpdaterId). Never change it.</summary>
+        private static readonly Guid UpdaterGuid = new Guid("6C3B7E1A-4F25-4D8B-9A61-2E7F0C5D8B34");
 
-        /// <summary>Id of the registered updater, or null (e.g. for DisableUpdater in tests).</summary>
+        /// <summary>
+        /// Id of the registered updater, or null. Read-only use (the Revit harness checks that it
+        /// is registered and optional); only this add-in may disable or unregister it.
+        /// </summary>
         public static UpdaterId RegisteredId { get; private set; }
 
         private readonly UpdaterId _id;
@@ -142,7 +145,7 @@ namespace IBTools.Tools.Paalcoordinaten
                 {
                     if (_notWritableLogged.Add(key))
                     {
-                        Logger.Info($"Paalcoördinaten updater: '{doc.Title}' {NotWritableReason(evaluation)}: niets automatisch geschreven (knop werkt wel).");
+                        Logger.Info($"Paalcoördinaten updater: '{doc.Title}' {evaluation.NotAutomaticReason}: niets automatisch geschreven (knop werkt wel).");
                     }
                     return;
                 }
@@ -156,7 +159,7 @@ namespace IBTools.Tools.Paalcoordinaten
 
                 PileCoordinateService.ApplyWithoutTransaction(evaluation);
                 Logger.Info($"Paalcoördinaten updater: '{doc.Title}' {what}; {evaluation.PendingCount} geschreven: " +
-                            string.Join(", ", evaluation.PendingIds) + " (" + evaluation.Report.BuildSummary() + ")");
+                            evaluation.DescribePendingIds() + " (" + evaluation.Report.BuildSummary() + ")");
             }
             catch (Exception ex)
             {
@@ -165,39 +168,17 @@ namespace IBTools.Tools.Paalcoordinaten
             }
         }
 
-        internal static string NotWritableReason(PileCoordinateEvaluation evaluation)
-        {
-            return evaluation.SelfTestPassed ? "staat niet op coördinaten" : "zelftest projectbasispunt mislukt";
-        }
-
-        internal static string DocumentKey(Document doc)
+        private static string DocumentKey(Document doc)
         {
             var path = doc.PathName;
             return string.IsNullOrEmpty(path) ? "title:" + doc.Title : path;
         }
 
+        /// <summary>Project base point and survey point are both <see cref="BasePoint"/>s.</summary>
         private static bool IsCoordinateSystemElement(Document doc, ElementId id)
         {
             var e = doc.GetElement(id);
-            if (e == null)
-            {
-                return false;
-            }
-            if (e is ProjectLocation || e is BasePoint)
-            {
-                return true;
-            }
-            var cat = e.Category;
-            if (cat == null)
-            {
-                return false;
-            }
-#if REVIT2024 || REVIT2025_OR_GREATER
-            var catId = cat.Id.Value;
-#else
-            var catId = cat.Id.IntegerValue;
-#endif
-            return catId == (int)BuiltInCategory.OST_ProjectBasePoint || catId == (int)BuiltInCategory.OST_SharedBasePoint;
+            return e is ProjectLocation || e is BasePoint;
         }
 
         public UpdaterId GetUpdaterId() => _id;

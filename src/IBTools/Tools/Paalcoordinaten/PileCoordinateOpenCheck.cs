@@ -40,8 +40,11 @@ namespace IBTools.Tools.Paalcoordinaten
         /// <summary>TaskDialog id, visible in DialogBoxShowing (test harness).</summary>
         public const string DialogId = "IBTools_PileCoordinatesOpenCheck";
 
-        /// <summary>Revit shows add-in task dialogs as "IB Tools - &lt;title&gt;".</summary>
-        public const string Title = "Paalcoördinaten";
+        /// <summary>
+        /// Title of the question and of the report after it (same as the button's report).
+        /// Revit shows an add-in's task dialog as "IB Tools - &lt;title&gt;".
+        /// </summary>
+        public const string Title = WritePileCoordinatesCommand.Title;
 
         private readonly List<Document> _pending = new List<Document>();
         private UIControlledApplication _application;
@@ -163,7 +166,7 @@ namespace IBTools.Tools.Paalcoordinaten
             var evaluation = PileCoordinateService.Evaluate(doc, null, PileScope.WholeModel);
             if (!evaluation.AllowsAutomaticWrite)
             {
-                Logger.Info($"Paalcoördinaten open check: '{doc.Title}' {PileCoordinateUpdater.NotWritableReason(evaluation)}: geen vraag.");
+                Logger.Info($"Paalcoördinaten open check: '{doc.Title}' {evaluation.NotAutomaticReason}: geen vraag.");
                 return;
             }
 
@@ -204,7 +207,7 @@ namespace IBTools.Tools.Paalcoordinaten
             PileCoordinateService.ApplyInTransaction(doc, evaluation);
             var report = evaluation.Report;
             Logger.Info($"Paalcoördinaten open check: {report.BuildSummary()}");
-            ResultDialog.Show(uiapp, "Paalcoördinaten", report.BuildSummary(), report.BuildDetails());
+            ResultDialog.Show(uiapp, Title, report.BuildSummary(), report.BuildDetails());
         }
 
         private int IndexOf(Document doc)

@@ -200,14 +200,20 @@ try {
         }
         # The open check of Paalcoordinaten asks a question in a modal dialog; a test Revit
         # started here must never hang on it. The caller can choose otherwise ($env:IBTOOLS_PILECHECK = "1").
-        if (-not $env:IBTOOLS_PILECHECK) {
+        # Only the started Revit inherits the 0: the caller's own environment is restored below.
+        $callerPileCheck = $env:IBTOOLS_PILECHECK
+        if (-not $callerPileCheck) {
             $env:IBTOOLS_PILECHECK = "0"
             Write-Host "    IBTOOLS_PILECHECK=0: geen vraag over paalcoordinaten bij openen (zet 1 om die te testen)" -ForegroundColor Gray
         }
-        if ($OpenFile) {
-            $proc = Start-Process -FilePath $RevitExe -ArgumentList ('"{0}"' -f (Resolve-Path $OpenFile).Path) -PassThru
-        } else {
-            $proc = Start-Process -FilePath $RevitExe -PassThru
+        try {
+            if ($OpenFile) {
+                $proc = Start-Process -FilePath $RevitExe -ArgumentList ('"{0}"' -f (Resolve-Path $OpenFile).Path) -PassThru
+            } else {
+                $proc = Start-Process -FilePath $RevitExe -PassThru
+            }
+        } finally {
+            $env:IBTOOLS_PILECHECK = $callerPileCheck
         }
         Save-IBToolsRevitRecord -Process $proc -Owner $Owner -Version $RevitVersion
         Write-Host "    Revit gestart: pid $($proc.Id) (vastgelegd in $script:IBToolsPidFile)" -ForegroundColor Green

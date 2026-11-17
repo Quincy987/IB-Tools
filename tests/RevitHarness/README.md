@@ -82,11 +82,12 @@ waarden komen uit Revits eigen *Report Shared Coordinates*, niet uit de omrekeni
 
 - updater geregistreerd en optioneel;
 - F. model niet op coördinaten: plaatsen en verplaatsen schrijft niets, één logregel;
-- A. op coördinaten zetten (updater even uit), service voor het hele model: alles geschreven;
-  I. tweede keer: knop-rapport "Alles ongewijzigd";
+- A0. op coördinaten zetten: de updater werkt alle palen bij;
+- A. alle X met de hand fout zetten (blijft staan: de updater reageert niet op parameters), dan
+  de service voor het hele model zoals de knop: alles geschreven; I. tweede keer: knop-rapport
+  "Alles ongewijzigd";
 - B. paal verplaatsen: waarden volgen, precies één updater-run (geen lus); C. kopie; D. nieuwe paal;
 - E1. projectlocatie wijzigen, E2. meetpunt verplaatsen: alle palen kloppen weer;
-- een met de hand gewijzigde X blijft staan (de updater reageert niet op parameters);
 - G1-G4, via heropenen in de UI (ExternalEvent): "Niet nu" laat de waarde staan; de echte vraag
   wordt door `Paalcoordinaten/ui-test-paalcoordinaten.ps1` aangeklikt ("Nu bijwerken") en het
   rapport gesloten; daarna geen vraag meer; met `IBTOOLS_PILECHECK=0` geen vraag maar wel de telling

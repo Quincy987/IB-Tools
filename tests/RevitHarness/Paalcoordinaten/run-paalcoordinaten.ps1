@@ -158,9 +158,10 @@ public static class IbDialogs {
     }
 }
 finally {
-    if ($ui -and -not $ui.HasExited) { $ui.Kill() }
-    & .\scripts\revit-lock.ps1 release
+    # The IB Tools manifest first: every other Revit 2023 on this pc needs it, whatever fails below.
     if ($manifestMoved -and (Test-Path $ibManifestAside)) { Move-Item -Force $ibManifestAside $ibManifest }
+    if ($ui -and -not $ui.HasExited) { $ui.Kill() }
+    try { & .\scripts\revit-lock.ps1 release } catch { Write-Host "release mislukt: $($_.Exception.Message)" -ForegroundColor Red }
     Remove-Item (Join-Path $addins "IBTools.RevitHarness.addin") -ErrorAction SilentlyContinue
     Remove-Item (Join-Path $addins "IBTools.RevitHarness.dll") -ErrorAction SilentlyContinue
     Remove-Item Env:\IBTOOLS_HARNESS_JOB -ErrorAction SilentlyContinue

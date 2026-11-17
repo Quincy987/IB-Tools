@@ -20,14 +20,17 @@ namespace IBTools.RevitHarness
     /// </summary>
     /// <remarks>
     /// Stage 0 (first idle), in a new project from the template (not a UI document):
-    ///   F. model NOT on coordinates: place 4 piles, move one: parameters stay empty, one log line;
-    ///   A. put the model on coordinates (true north +10°, RD position, base point moved), with
-    ///      the updater switched off, and run the service for the whole model: all written;
+    ///   F. model NOT on coordinates: place 4 piles, move one: the family's values stay, one log line;
+    ///   A0. put the model on coordinates (true north +10°, RD position, base point moved): the
+    ///      updater writes every pile;
+    ///   A. make every X wrong by hand (a parameter edit must not start the updater), then the
+    ///      service for the whole model, like the button: all written;
     ///   I. the service again: everything unchanged (the button's report);
     ///   B. move a pile: its values follow, exactly one updater run in the log;
     ///   C. copy a pile: the copy gets its own values; D. a new pile gets values;
-    ///   E. change the coordinate system (project location; survey point): all piles follow;
-    ///   then a wrong X on one pile (parameter edit: the updater must not react), save as paal.rvt.
+    ///   E1/E2. change the coordinate system (project location; survey point): all piles follow;
+    ///   then a wrong X on one pile, save as paal.rvt.
+    /// The updater cannot be switched off from here (only the add-in that registered it may).
     /// Stages 1-4 (ExternalEvent opens/closes documents in the UI, the open check asks):
     ///   G1 "Niet nu" (answered in DialogBoxShowing): value stays wrong;
     ///   G2 real dialog, ui-test-paalcoordinaten.ps1 clicks "Nu bijwerken" and closes the report: fixed;
@@ -49,7 +52,9 @@ namespace IBTools.RevitHarness
         private DateTime _waitFrom;
         private ExternalEvent _openEvent;
         private ReopenHandler _opener;
-        private string _dialogMode = "ok";     // "niet-nu" | "real" | "ok" (unexpected: IDOK)
+        // How OnDialogBoxShowing treats the open-check question: "niet-nu" answers it, "real"
+        // leaves it for the UI test, "geen" means none is expected (answered IDOK so the run goes on).
+        private string _dialogMode = "geen";
         private readonly List<string> _ourDialogs = new List<string>();
         private long _logMark;
         private int _pileCount;
@@ -81,7 +86,7 @@ namespace IBTools.RevitHarness
                         return;
                     }
                     var code = _dialogMode == "niet-nu" ? (int)TaskDialogResult.CommandLink2 : 1;
-                    Log("   automatisch beantwoord: " + (_dialogMode == "niet-nu" ? "Niet nu" : "IDOK") + " -> " + e.OverrideResult(code));
+                    Log("   automatisch beantwoord: " + (_dialogMode == "niet-nu" ? "Niet nu" : "IDOK (geen vraag verwacht)") + " -> " + e.OverrideResult(code));
                     return;
                 }
                 bool handled = e.DialogId == "TaskDialog_Unresolved_References" ? e.OverrideResult(1002) : e.OverrideResult(1);
@@ -109,7 +114,11 @@ namespace IBTools.RevitHarness
                     case 0:
                         _stage = 1;
                         _openEvent = ExternalEvent.Create(_opener = new ReopenHandler(this));
-                        RunModelTests(uiapp, uidoc.Document);
+                        if (!RunModelTests(uiapp, uidoc.Document))
+                        {
+                            Done();
+                            return;
+                        }
                         // G1: open paal.rvt in the UI, answer "Niet nu".
                         Environment.SetEnvironmentVariable(PileCoordinateOpenCheck.PromptVariable, "1");
                         StartReopen("niet-nu");
@@ -136,7 +145,7 @@ namespace IBTools.RevitHarness
                         if (!Waited(2)) return;
                         _stage = 3;
                         G2(uidoc.Document);
-                        StartReopen("ok");
+                        StartReopen("geen");
                         break;
                     case 3:
                         if (!Waited(6)) return;
@@ -144,7 +153,7 @@ namespace IBTools.RevitHarness
                         G3(uidoc.Document);
                         PrepareG4(uidoc.Document);
                         Environment.SetEnvironmentVariable(PileCoordinateOpenCheck.PromptVariable, "0");
-                        StartReopen("ok");
+                        StartReopen("geen");
                         break;
                     case 4:
                         if (!Waited(6)) return;
@@ -184,7 +193,6 @@ namespace IBTools.RevitHarness
             _ourDialogs.Clear();
             _logMark = IbLogLength();
             _opener.Finished = false;
-            _opener.Error = null;
             _waitFrom = DateTime.Now;
             Log("Heropenen van paal.rvt (dialoog: " + dialogMode + ", " + PileCoordinateOpenCheck.PromptVariable + "=" +
                 Environment.GetEnvironmentVariable(PileCoordinateOpenCheck.PromptVariable) + ") -> " + _openEvent.Raise());
@@ -197,7 +205,6 @@ namespace IBTools.RevitHarness
             private readonly PaalcoordinatenHarness _h;
             public bool Finished;
             public DateTime FinishedAt;
-            public string Error;
 
             public ReopenHandler(PaalcoordinatenHarness h)
             {
@@ -222,7 +229,6 @@ namespace IBTools.RevitHarness
                 }
                 catch (Exception ex)
                 {
-                    Error = ex.ToString();
                     _h.Log("   heropenen MISLUKT: " + ex);
                     _h._fails++;
                 }
@@ -235,7 +241,8 @@ namespace IBTools.RevitHarness
 
         // ------------------------------------------------------------------ stage 0
 
-        private void RunModelTests(UIApplication uiapp, Document startDoc)
+        /// <summary>Cases F-E2 and the models for G; false when the run cannot go on.</summary>
+        private bool RunModelTests(UIApplication uiapp, Document startDoc)
         {
             var app = uiapp.Application;
             Log("Startdocument: " + startDoc.PathName);
@@ -244,7 +251,7 @@ namespace IBTools.RevitHarness
             Check(updaterId != null && UpdaterRegistry.IsUpdaterRegistered(updaterId), "Updater geregistreerd");
             if (updaterId == null)
             {
-                return;
+                return false;
             }
             Check(UpdaterRegistry.GetIsUpdaterOptional(updaterId), "Updater is optioneel (geen melding bij collega's zonder IB Tools)");
 
@@ -253,7 +260,10 @@ namespace IBTools.RevitHarness
             Log("Nieuw project uit " + template + ": '" + doc.Title + "'");
             var symbol = LoadPileFamily(doc);
             var level = new FilteredElementCollector(doc).OfClass(typeof(Level)).Cast<Level>().OrderBy(l => Math.Abs(l.Elevation)).First();
-            EnsureParameters(app, doc, symbol, level);
+            if (!PileFamilyHasParameters(doc, symbol, level))
+            {
+                return false;
+            }
             Log("Level: " + level.Name + "; familie " + symbol.FamilyName + ": " + symbol.Name + " (" + symbol.Family.FamilyPlacementType + ")");
             LogCoordinates(doc, "template");
 
@@ -274,7 +284,7 @@ namespace IBTools.RevitHarness
             Move(doc, piles[0], new XYZ(1, 1, 0) * Ft, "harness: F verplaatsen");
             var after = piles.Select(id => Fmt(ReadX(doc, id)) + "/" + Fmt(ReadY(doc, id))).ToList();
             var staleF = PileCoordinateService.Evaluate(doc, null, PileScope.WholeModel);
-            Check(placed.SequenceEqual(after) && staleF.PendingCount >= 3,
+            Check(placed.SequenceEqual(after) && staleF.PendingCount == 4,
                 "F. Niet op coördinaten: plaatsen en verplaatsen schrijft niets (" + staleF.PendingCount + " palen zouden met de knop veranderen)");
             var linesF = IbLogSince(mark).Where(l => l.Contains("Paalcoördinaten updater:")).ToList();
             foreach (var l in linesF) Log("   log: " + l);
@@ -376,10 +386,10 @@ namespace IBTools.RevitHarness
                 t.Commit();
             }
             LogCoordinates(doc, "E2");
-            Log(string.Format(CultureInfo.InvariantCulture, "E2. X paal 1 was {0:0.000}, nu {1:0.000} (gelijk = meetpunt verplaatsen verandert de gedeelde coördinaten niet)", before, ReadX(doc, piles[0])));
+            Log(string.Format(CultureInfo.InvariantCulture, "E2. X paal 1 was {0:0.000}, nu {1:0.000}", before, ReadX(doc, piles[0])));
             CheckAll(doc, piles, "E2. Na verplaatsen meetpunt:");
 
-            // Parameter edit (with the updater on): must stay, no loop. Then save for G.
+            // One wrong X (it stays: see A), saved for the open check in G.
             _wrongPileId = piles[0].IntegerValue;
             using (var t = new Transaction(doc, "harness: foute X"))
             {
@@ -387,7 +397,6 @@ namespace IBTools.RevitHarness
                 WriteX(doc, piles[0], WrongX);
                 t.Commit();
             }
-            Check(Math.Abs((ReadX(doc, piles[0]) ?? 0) - WrongX) < 1e-6, "Parameterwijziging start de updater niet (foute X blijft staan, geen lus)");
             doc.SaveAs(_paal, new SaveAsOptions { OverwriteExistingFile = true });
             Log("Opgeslagen: " + _paal);
             doc.Close(false);
@@ -397,6 +406,7 @@ namespace IBTools.RevitHarness
             other.Close(false);
             Log("Hulpmodel zonder palen: " + _other);
             Flush();
+            return true;
         }
 
         // ------------------------------------------------------------------ G
@@ -424,7 +434,7 @@ namespace IBTools.RevitHarness
             if (doc != null) CheckPile(doc, WrongPile, "G2. Herstelde paal");
             var lines = IbLogSince(_logMark).Where(l => l.Contains("open check")).ToList();
             foreach (var l in lines) Log("   log: " + l);
-            Check(lines.Any(l => l.Contains("1 paal geschreven") || l.Contains("1 paal geschreven,")), "G2. Rapport: 1 paal geschreven");
+            Check(lines.Any(l => l.Contains("1 paal geschreven")), "G2. Rapport: 1 paal geschreven");
             Check(doc != null && doc.IsModified, "G2. Model gewijzigd na bijwerken (één transactie)");
             if (doc != null) doc.Save();
         }
@@ -434,7 +444,7 @@ namespace IBTools.RevitHarness
             Check(_ourDialogs.Count == 0, "G3. Opnieuw openen na bijwerken: geen vraag (" + _ourDialogs.Count + ")");
             var lines = IbLogSince(_logMark).Where(l => l.Contains("open check")).ToList();
             foreach (var l in lines) Log("   log: " + l);
-            Check(lines.Any(l => l.Contains("paal") && l.Contains("geen vraag (niets te schrijven)")), "G3. Log: geen vraag, niets te schrijven");
+            Check(lines.Any(l => l.Contains("'paal'") && l.Contains("geen vraag (niets te schrijven)")), "G3. Log: geen vraag, niets te schrijven");
         }
 
         private void PrepareG4(Document active)
@@ -455,7 +465,7 @@ namespace IBTools.RevitHarness
             Check(_ourDialogs.Count == 0, "G4. " + PileCoordinateOpenCheck.PromptVariable + "=0: geen vraag (" + _ourDialogs.Count + ")");
             var lines = IbLogSince(_logMark).Where(l => l.Contains("open check")).ToList();
             foreach (var l in lines) Log("   log: " + l);
-            Check(lines.Any(l => l.Contains(_pileCount + " palen met coördinaatparameters, 1 verouderd (1 schrijfbaar, 0 geblokkeerd)")
+            Check(lines.Any(l => l.Contains("'paal'") && l.Contains(_pileCount + " palen met coördinaatparameters, 1 verouderd (1 schrijfbaar, 0 geblokkeerd)")
                               && l.Contains("geen vraag (" + PileCoordinateOpenCheck.PromptVariable + "=0)")),
                 "G4. Log: telling (" + _pileCount + " palen, 1 verouderd) en geen vraag");
             Check(doc != null && Math.Abs((ReadX(doc, WrongPile) ?? 0) - WrongX) < 1e-6, "G4. Niets geschreven");
@@ -476,9 +486,13 @@ namespace IBTools.RevitHarness
             File.WriteAllText(Path.Combine(_job, "done.txt"), _fails == 0 ? "ok" : "fout " + _fails);
         }
 
-        private void EnsureParameters(Autodesk.Revit.ApplicationServices.Application app, Document doc, FamilySymbol symbol, Level level)
+        /// <summary>
+        /// The IB pile family carries X-/Y-coördinaat_funderingspaal itself (shared family
+        /// parameters), so a project from the template needs no binding. Checked on a probe pile
+        /// that is rolled back; without them the run stops with FOUT.
+        /// </summary>
+        private bool PileFamilyHasParameters(Document doc, FamilySymbol symbol, Level level)
         {
-            // The pile family may carry the parameters itself (shared family parameters).
             using (var t = new Transaction(doc, "harness: probe"))
             {
                 Start(t);
@@ -487,57 +501,8 @@ namespace IBTools.RevitHarness
                 var y = YParam(probe);
                 Log("Paal uit de familie: X-parameter " + Describe(x) + ", Y-parameter " + Describe(y));
                 t.RollBack();
-                if (x != null && y != null)
-                {
-                    return;
-                }
-            }
-            var map = doc.ParameterBindings;
-            var it = map.ForwardIterator();
-            var bound = new List<string>();
-            while (it.MoveNext())
-            {
-                var name = it.Key?.Name;
-                if (name == PileCoordinateParameters.XName || name == PileCoordinateParameters.YName)
-                {
-                    bound.Add(name + " (" + (it.Current is InstanceBinding ? "instance" : "type") + ")");
-                }
-            }
-            Log("Template-bindingen: " + (bound.Count == 0 ? "geen X-/Y-coördinaat-parameters" : string.Join(", ", bound)));
-            if (bound.Count == 2)
-            {
-                return;
-            }
-
-            // Not in the template: bind them from a shared parameter file with the IB GUIDs.
-            var file = Path.Combine(_job, "IB_paal_parameters.txt");
-            File.WriteAllText(file,
-                "# This is a Revit shared parameter file.\r\n*META\tVERSION\tMINVERSION\r\nMETA\t2\t1\r\n*GROUP\tID\tNAME\r\nGROUP\t1\tFunderingspaal\r\n" +
-                "*PARAM\tGUID\tNAME\tDATATYPE\tDATACATEGORY\tGROUP\tVISIBLE\tDESCRIPTION\tUSERMODIFIABLE\tHIDEWHENNOEDITABLE\r\n" +
-                "PARAM\t" + PileCoordinateParameters.XGuid + "\t" + PileCoordinateParameters.XName + "\tLENGTH\t\t1\t1\t\t1\t0\r\n" +
-                "PARAM\t" + PileCoordinateParameters.YGuid + "\t" + PileCoordinateParameters.YName + "\tLENGTH\t\t1\t1\t\t1\t0\r\n",
-                Encoding.Unicode); // Revit writes shared parameter files as UTF-16
-            var old = app.SharedParametersFilename;
-            try
-            {
-                app.SharedParametersFilename = file;
-                var group = app.OpenSharedParameterFile().Groups.get_Item("Funderingspaal");
-                var cats = app.Create.NewCategorySet();
-                cats.Insert(doc.Settings.Categories.get_Item(BuiltInCategory.OST_StructuralFoundation));
-                using (var t = new Transaction(doc, "harness: parameters"))
-                {
-                    Start(t);
-                    foreach (var name in new[] { PileCoordinateParameters.XName, PileCoordinateParameters.YName })
-                    {
-                        doc.ParameterBindings.Insert(group.Definitions.get_Item(name), app.Create.NewInstanceBinding(cats), GroupTypeId.Data);
-                    }
-                    t.Commit();
-                }
-                Log("Parameters gebonden uit " + file);
-            }
-            finally
-            {
-                app.SharedParametersFilename = old ?? "";
+                Check(x != null && y != null, "Paalfamilie heeft X-/Y-coördinaat_funderingspaal");
+                return x != null && y != null;
             }
         }
 
@@ -647,7 +612,7 @@ namespace IBTools.RevitHarness
         private static string Describe(Parameter p)
         {
             if (p == null) return "ontbreekt";
-            return p.StorageType + (p.IsShared ? " gedeeld " + p.GUID : " niet gedeeld") + (p.Definition is InternalDefinition d && d.VariesAcrossGroups ? "" : "");
+            return p.StorageType + (p.IsShared ? " gedeeld " + p.GUID : " niet gedeeld");
         }
 
         private static Parameter XParam(Element e) => e.get_Parameter(PileCoordinateParameters.XGuid) ?? e.LookupParameter(PileCoordinateParameters.XName);
@@ -828,11 +793,10 @@ namespace IBTools.RevitHarness
             {
                 var doc = uidoc.Document;
                 lines.Add("H. Document: " + doc.PathName);
-                var ibLoaded = AppDomain.CurrentDomain.GetAssemblies().Any(a => a.GetName().Name == "FoundationProjectionToggle");
-                var ibApp = AppDomain.CurrentDomain.GetAssemblies().Any(a => a.GetName().Name == "FoundationProjectionToggle")
-                    && UpdaterRegistry.GetRegisteredUpdaterInfos().Cast<UpdaterInfo>().Any(i => i.UpdaterName.StartsWith("IB Tools"));
-                lines.Add("H. IB Tools-assembly geladen: " + ibLoaded + "; IB-updater geregistreerd: " + ibApp);
-                lines.Add((ibApp ? "FOUT " : "OK   ") + "H. Revit draait zonder IB Tools-updater");
+                // The IB Tools dll may be loaded (the harness dll refers to it), but without its
+                // manifest App.OnStartup does not run, so the updater is not registered.
+                var ibUpdater = UpdaterRegistry.GetRegisteredUpdaterInfos().Cast<UpdaterInfo>().Any(i => i.UpdaterName.StartsWith("IB Tools"));
+                lines.Add((ibUpdater ? "FOUT " : "OK   ") + "H. Revit draait zonder IB Tools-updater");
                 foreach (var d in _dialogs) lines.Add("H. Dialoog: " + d);
                 var updaterDialogs = _dialogs.Where(d => d.IndexOf("updater", StringComparison.OrdinalIgnoreCase) >= 0).ToList();
                 lines.Add((updaterDialogs.Count == 0 ? "OK   " : "FOUT ") + "H. Geen melding over een ontbrekende updater bij openen (" + _dialogs.Count + " dialogen in totaal)");

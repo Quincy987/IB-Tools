@@ -49,11 +49,24 @@ namespace IBTools.Tools.Paalcoordinaten
         /// <summary>Automatic writing (updater, open check) is allowed for this model.</summary>
         public bool AllowsAutomaticWrite => SelfTestPassed && OnCoordinates;
 
+        /// <summary>Why automatic writing is not allowed (for the log), or null when it is.</summary>
+        public string NotAutomaticReason =>
+            !SelfTestPassed ? "zelftest projectbasispunt mislukt" :
+            !OnCoordinates ? "staat niet op coördinaten" : null;
+
         /// <summary>Number of piles that would be written.</summary>
         public int PendingCount => Pending.Count;
 
-        /// <summary>Element ids of the piles that would be written (for the log).</summary>
-        public IEnumerable<long> PendingIds => Pending.Select(p => p.Outcome.ElementId);
+        /// <summary>
+        /// Element ids of the piles that would be written, for the log: at most
+        /// <paramref name="max"/>, then "… (+n)" so a paste of 1000 piles stays one short line.
+        /// </summary>
+        public string DescribePendingIds(int max = 20)
+        {
+            var ids = Pending.Take(max).Select(p => p.Outcome.ElementId.ToString()).ToList();
+            var more = Pending.Count - ids.Count;
+            return string.Join(", ", ids) + (more > 0 ? $" … (+{more})" : "");
+        }
 
         internal List<PileCoordinateService.PendingWrite> Pending { get; } = new List<PileCoordinateService.PendingWrite>();
 

@@ -69,6 +69,7 @@ function Shot($win, [string]$file) {
     } catch { Say "Screenshot mislukt: $($_.Exception.Message)" }
 }
 
+$q = $null
 try {
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     while (-not (Test-Path (Join-Path $Job "ui-ready.txt"))) {
@@ -103,6 +104,14 @@ try {
 }
 catch {
     Say ("UI-TEST FOUT: " + $_.Exception.Message)
+    # A question left open is modal: Revit would never idle again and the harness could not
+    # report. Close it (= "Niet nu"), so the harness finishes with FOUT instead of hanging.
+    try {
+        if ($q -and $q.Current.NativeWindowHandle -ne 0) {
+            [IbClick]::PostMessage([IntPtr]$q.Current.NativeWindowHandle, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null  # WM_CLOSE
+            Say "Vraag gesloten na de fout"
+        }
+    } catch { }
 }
 finally {
     Set-Content -Path (Join-Path $Job "ui-done.txt") -Value "done"
