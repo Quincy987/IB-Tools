@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## v2.1.1 — Paalcoördinaten automatisch bijwerken (2026-11-17)
+
 ### Toegevoegd
 - Paalcoördinaten werkt automatisch bij, zonder op de knop te drukken (alleen in een model op
   coördinaten waarvan de zelftest op het projectbasispunt slaagt):

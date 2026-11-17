@@ -11,8 +11,8 @@
     src\IBTools\IBTools.csproj).
 .EXAMPLE
     .\scripts\release.ps1
-    gh release create v2.1.0 -R Quincy987/IB-Tools --target development --title "v2.1.0 - IB Tools" `
-        --notes-file notes.md "$env:LOCALAPPDATA\IBTools\release\v2.1.0\*.zip"
+    gh release create v2.1.1 -R Quincy987/IB-Tools --target development --title "v2.1.1 - IB Tools" `
+        --notes-file notes.md "$env:LOCALAPPDATA\IBTools\release\v2.1.1\*.zip"
 #>
 param(
     [string]$OutDir
