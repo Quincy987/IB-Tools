@@ -60,3 +60,6 @@ updater binnen in dezelfde transactie (E1, E2, A0), dus er is geen terugval nodi
 - Een echt projectmodel van het bureau: de test gebruikt het IB-template met de IB-paalfamilie.
 - Een tegenproef voor H: dat een *niet*-optionele updater in hetzelfde geval wél een melding geeft,
   is niet gedraaid. H laat alleen zien dat er met deze (optionele) updater geen melding komt.
+- Andere manieren om het coördinatenstelsel te wijzigen dan E1/E2: *Acquire Coordinates* van een
+  gekoppeld model en een andere projectlocatie actief maken (*Make Current*). Gaat dat buiten de
+  updater om, dan vangt de controle bij de volgende keer openen het op.
