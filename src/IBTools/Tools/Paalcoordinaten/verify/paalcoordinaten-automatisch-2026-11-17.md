@@ -13,22 +13,22 @@ waarden komen uit Revits eigen *Report Shared Coordinates* (`GetProjectPosition`
 omrekening van de add-in.
 
 **Resultaat: 47 van 47 controles OK in de Revit met IB Tools, 2 van 2 in de Revit zonder.**
+Na de review opnieuw gedraaid met dezelfde uitkomst.
 
 ## Gevallen
 
 | Geval | Wat | Uitkomst |
 |---|---|---|
-| – | Updater geregistreerd, en optioneel | OK |
+| – | Updater geregistreerd, en optioneel; de paalfamilie heeft beide parameters | OK |
 | F | Model **niet** op coördinaten: 4 palen plaatsen, één verplaatsen | Niets geschreven (familiewaarden 0.000 blijven), één logregel voor twee transacties |
 | A0 | Model op coördinaten zetten (ware noorden 10°, interne oorsprong op RD 121000 / 487000, basispunt 100 m / 40 m verschoven) | De updater werkt alle 4 palen bij, gelijk aan Report Shared Coordinates |
-| A | Alle X met de hand fout gezet, dan de service voor het hele model (wat de knop doet) | Handmatige waarde blijft eerst staan; daarna 4 geschreven, alle 4 goed |
+| A | Alle X met de hand fout gezet, dan de service voor het hele model (wat de knop doet) | De handmatige waarde blijft staan (een parameterwijziging start de updater niet); daarna 4 geschreven, alle 4 goed |
 | I | Nog een keer (knop-rapport) | "Alles ongewijzigd: 4 palen (hele model)." |
 | B | Paal 3,21 m / −1,5 m verplaatsen | Nieuwe waarden direct goed; precies één updater-run in het log (geen lus) |
 | C | Paal kopiëren | Kopie heeft eigen, juiste waarden |
 | D | Nieuwe paal plaatsen | Juiste waarden |
 | E1 | Projectlocatie wijzigen (+10 m / −4 m, +5°) | Alle 6 palen bijgewerkt via de updater (stil, zonder vraag) |
 | E2 | Meetpunt verplaatsen | Alle 6 palen bijgewerkt (X van paal 1 ging van 121010.707 naar 121004.463) |
-| – | X met de hand wijzigen, updater aan | Blijft staan: een parameterwijziging start de updater niet |
 | G1 | Model opslaan met 1 foute X, heropenen in de UI, "Niet nu" | Eén vraag; log "6 palen met coördinaatparameters, 1 verouderd (1 schrijfbaar, 0 geblokkeerd)"; X blijft fout |
 | G2 | Heropenen, **echte klik** op "Nu bijwerken" (UI-test) | Vraag getoond, X hersteld, rapport "1 paal geschreven, 5 ongewijzigd, 0 overgeslagen (hele model)." |
 | G3 | Opnieuw heropenen | Geen vraag (niets te schrijven) |
