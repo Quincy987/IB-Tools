@@ -94,7 +94,10 @@ waarden komen uit Revits eigen *Report Shared Coordinates*, niet uit de omrekeni
   in het log;
 - H. daarna sluit het script zijn eigen Revit, zet het manifest van IB Tools opzij (binnen het slot,
   tot het harnas van die Revit klaar is) en opent het opgeslagen model in een Revit zonder IB Tools:
-  geen melding over een ontbrekende updater (`job-h\results.txt`).
+  geen melding over een ontbrekende updater (`Paalcoordinaten/ZonderIbToolsHarness.cs`,
+  `job-h\results.txt`).
+
+Exitcode: 0 als alles OK is, 1 bij een FOUT of een afgebroken run, 2 als het testslot bezet is.
 
 Beelden in de jobmap: `ui-vraag.png` (de vraag bij openen), `ui-rapport.png` (het rapport na
 "Nu bijwerken").

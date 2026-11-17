@@ -70,6 +70,7 @@ function Shot($win, [string]$file) {
 }
 
 $q = $null
+$res = $null
 try {
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     while (-not (Test-Path (Join-Path $Job "ui-ready.txt"))) {
@@ -80,13 +81,11 @@ try {
     $q = Find-Top $QuestionTitle $null 180
     if (-not $q) { throw "Vraag '$QuestionTitle' niet gevonden" }
     Start-Sleep -Milliseconds 800
-    $texts = $q.FindAll($TS::Descendants, [System.Windows.Automation.Condition]::TrueCondition) |
-        ForEach-Object { $_.Current.Name } | Where-Object { $_ } | Select-Object -Unique
-    Say ("Vraag: " + ($texts -join " | "))
+    $all = $q.FindAll($TS::Descendants, [System.Windows.Automation.Condition]::TrueCondition)
+    Say ("Vraag: " + (($all | ForEach-Object { $_.Current.Name } | Where-Object { $_ } | Select-Object -Unique) -join " | "))
     Shot $q "ui-vraag.png"
 
     # Task dialog command links are Win32 child windows (class CCCommandLink, UIA type Pane).
-    $all = $q.FindAll($TS::Descendants, [System.Windows.Automation.Condition]::TrueCondition)
     $link = $all | Where-Object { $_.Current.Name -like "Nu bijwerken*" } | Select-Object -First 1
     if (-not $link -or $link.Current.NativeWindowHandle -eq 0) { throw ("'Nu bijwerken' niet gevonden; elementen: " + (($all | ForEach-Object { $_.Current.Name }) -join " | ")) }
     [IbClick]::PostMessage([IntPtr]$link.Current.NativeWindowHandle, 0x00F5, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null  # BM_CLICK
@@ -104,14 +103,17 @@ try {
 }
 catch {
     Say ("UI-TEST FOUT: " + $_.Exception.Message)
-    # A question left open is modal: Revit would never idle again and the harness could not
-    # report. Close it (= "Niet nu"), so the harness finishes with FOUT instead of hanging.
-    try {
-        if ($q -and $q.Current.NativeWindowHandle -ne 0) {
-            [IbClick]::PostMessage([IntPtr]$q.Current.NativeWindowHandle, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null  # WM_CLOSE
-            Say "Vraag gesloten na de fout"
-        }
-    } catch { }
+    # The question and the report are modal: left open, Revit never idles again and the harness
+    # cannot report. Close whichever is still there (WM_CLOSE: the question then means "Niet
+    # nu"), so the harness finishes with FOUT instead of hanging.
+    foreach ($w in @($res, $q)) {
+        try {
+            if ($w -and $w.Current.NativeWindowHandle -ne 0) {
+                [IbClick]::PostMessage([IntPtr]$w.Current.NativeWindowHandle, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null  # WM_CLOSE
+                Say ("Gesloten na de fout: " + $w.Current.Name)
+            }
+        } catch { }  # already gone
+    }
 }
 finally {
     Set-Content -Path (Join-Path $Job "ui-done.txt") -Value "done"

@@ -5,9 +5,10 @@
     touched), deploys IB Tools + the harness, starts Revit 2023 with debug logging and a copy of
     the IB template, lets PaalcoordinatenHarness run cases A-G (ui-test-paalcoordinaten.ps1
     clicks "Nu bijwerken" for G2), then case H: closes its own Revit, starts Revit once more
-    WITHOUT the IB Tools manifest (put back once that Revit's harness is done) and opens the saved model. Once the lock is ours it ALWAYS
-    releases it (closes only its own Revit), puts the IB Tools manifest back and removes the
-    harness from the Addins folder.
+    WITHOUT the IB Tools manifest (put back once that Revit's harness is done) and opens the
+    saved model. Once the lock is ours it ALWAYS puts the IB Tools manifest back, releases the
+    lock (closes only its own Revit) and removes the harness from the Addins folder.
+    Exit codes: 0 all checks OK, 1 a check failed or the run broke off, 2 test lock busy.
 .EXAMPLE
     $env:IBTOOLS_LOCK_OWNER = "<thread name>"; .\tests\RevitHarness\Paalcoordinaten\run-paalcoordinaten.ps1
 #>
@@ -136,7 +137,7 @@ public static class IbDialogs {
             "-Job", $job, "-RevitPid", $revitPid)
     }
 
-    # --- H: the saved model in a Revit without IB Tools (manifest aside only during start-up) ---
+    # --- H: the saved model in a Revit without IB Tools (manifest aside until its harness is done) ---
     if (-not $SkipH) {
         & .\scripts\revit-lock.ps1 stop | Out-Host       # our own Revit only; the lock stays ours
         Copy-Item (Join-Path $job "paal.rvt") (Join-Path $jobH "paal zonder IB Tools.rvt")
@@ -168,5 +169,13 @@ finally {
     Pop-Location
 }
 Write-Host ""
-Get-Content (Join-Path $job "results.txt") | Where-Object { $_ -match " (OK|FOUT) " }
-if (Test-Path (Join-Path $jobH "results.txt")) { Get-Content (Join-Path $jobH "results.txt") | Where-Object { $_ -match " (OK|FOUT) " } }
+$verdicts = @()
+foreach ($folder in @($job) + $(if ($SkipH) { @() } else { @($jobH) })) {
+    $results = Join-Path $folder "results.txt"
+    if (Test-Path $results) { Get-Content $results -Encoding UTF8 | Where-Object { $_ -match " (OK|FOUT) " } }
+    $done = Join-Path $folder "done.txt"
+    $verdicts += $(if (Test-Path $done) { (Get-Content $done -TotalCount 1).Trim() } else { "geen done.txt" })
+}
+Write-Host ("Uitkomst: " + ($verdicts -join ", "))
+if (@($verdicts | Where-Object { $_ -ne "ok" }).Count -gt 0) { exit 1 }
+exit 0
