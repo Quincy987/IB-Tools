@@ -40,7 +40,6 @@ if ($LASTEXITCODE -ne 0) {
 . (Join-Path $repo "scripts\ibtools-common.ps1")
 $owner = Get-IBToolsOwner
 $oldDebug = $env:IBTOOLS_DEBUG
-$oldPileCheck = $env:IBTOOLS_PILECHECK
 $ui = $null
 $manifestMoved = $false
 try {
@@ -166,7 +165,6 @@ finally {
     Remove-Item (Join-Path $addins "IBTools.RevitHarness.dll") -ErrorAction SilentlyContinue
     Remove-Item Env:\IBTOOLS_HARNESS_JOB -ErrorAction SilentlyContinue
     $env:IBTOOLS_DEBUG = $oldDebug
-    $env:IBTOOLS_PILECHECK = $oldPileCheck
     Pop-Location
 }
 Write-Host ""

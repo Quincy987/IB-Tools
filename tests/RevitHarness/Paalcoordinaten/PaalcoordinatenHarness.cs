@@ -752,8 +752,9 @@ namespace IBTools.RevitHarness
 
     /// <summary>
     /// Case H: the model that the updater wrote in, opened in a Revit WITHOUT IB Tools (job folder
-    /// contains zonder-ibtools.txt). Logs every dialog during opening (a missing non-optional
-    /// updater gives one) and whether IB Tools was loaded. Uses only the Revit API.
+    /// contains zonder-ibtools.txt). Checks that the IB Tools updater is not registered and logs
+    /// every dialog during opening (a missing non-optional updater gives one). Uses only the
+    /// Revit API.
     /// </summary>
     public sealed class ZonderIbToolsHarness
     {
@@ -808,7 +809,8 @@ namespace IBTools.RevitHarness
                 lines.Add("FOUT H. HARNESS EXCEPTION: " + ex);
             }
             File.AppendAllLines(Path.Combine(_job, "results.txt"), lines.Select(l => DateTime.Now.ToString("HH:mm:ss", CultureInfo.InvariantCulture) + " " + l), Encoding.UTF8);
-            File.WriteAllText(Path.Combine(_job, "done.txt"), "ok");
+            var fails = lines.Count(l => l.StartsWith("FOUT "));
+            File.WriteAllText(Path.Combine(_job, "done.txt"), fails == 0 ? "ok" : "fout " + fails);
         }
     }
 }

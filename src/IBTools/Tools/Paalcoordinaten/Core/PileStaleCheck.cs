@@ -10,7 +10,10 @@ namespace IBTools.Tools.Paalcoordinaten.Core
     /// </summary>
     public sealed class PileStaleCheck
     {
-        /// <summary>Piles with both coordinate parameters (every outcome of a whole-model run).</summary>
+        /// <summary>
+        /// Every outcome of a whole-model run: foundations with both coordinate parameters
+        /// (per pile, or on the type, which the report lists as skipped).
+        /// </summary>
         public int Total { get; private set; }
 
         /// <summary>Stale piles that would be written now.</summary>

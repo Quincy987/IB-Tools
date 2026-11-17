@@ -58,3 +58,5 @@ updater binnen in dezelfde transactie (E1, E2, A0), dus er is geen terugval nodi
 - Een gedeeld model (worksharing) met palen die door een collega zijn uitgecheckt: de regels zijn
   dezelfde als die van de knop. De telling "geblokkeerd" in de vraag is alleen met unit-tests gedekt.
 - Een echt projectmodel van het bureau: de test gebruikt het IB-template met de IB-paalfamilie.
+- Een tegenproef voor H: dat een *niet*-optionele updater in hetzelfde geval wél een melding geeft,
+  is niet gedraaid. H laat alleen zien dat er met deze (optionele) updater geen melding komt.

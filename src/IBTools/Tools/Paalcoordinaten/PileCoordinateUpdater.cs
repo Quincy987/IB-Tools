@@ -57,6 +57,7 @@ namespace IBTools.Tools.Paalcoordinaten
             {
                 if (UpdaterRegistry.IsUpdaterRegistered(_id))
                 {
+                    RegisteredId = _id;
                     return true;
                 }
                 UpdaterRegistry.RegisterUpdater(this, true); // optional: no warning without IB Tools
