@@ -87,6 +87,12 @@ eigen E/W en N/S, dan schrijft hij niets.
 
 ## Demo en test
 
-Demo: [ibtools-demo.mp4](../../../../docs/demo/ibtools-demo.mp4), derde deel. Getest in Revit 2023;
-er is geen apart verslag in de repo. De rekenkern (`Core/`) heeft unit-tests in
-`tests/IBTools.Tests/Paalcoordinaten`. Code: `WritePileCoordinatesCommand`, `PileCoordinateService`.
+Demo: [ibtools-demo.mp4](../../../../docs/demo/ibtools-demo.mp4), derde deel (de knop). Getest in
+Revit 2023. De knop zelf heeft geen apart verslag in de repo. Het automatisch bijwerken heeft dat
+wel: [verify/paalcoordinaten-automatisch-2026-11-17.md](verify/paalcoordinaten-automatisch-2026-11-17.md),
+onbemand met `tests/RevitHarness/Paalcoordinaten/run-paalcoordinaten.ps1`: 47/47 controles OK,
+plus 2/2 in een Revit zonder IB Tools. Revit 2022, 2024 en 2025 zijn alleen gecompileerd. De
+rekenkern (`Core/`) heeft unit-tests in `tests/IBTools.Tests/Paalcoordinaten`. Code:
+`WritePileCoordinatesCommand` (knop), `PileCoordinateService` (gedeelde evaluatie),
+`PileCoordinateUpdater` (verplaatsen/kopiëren/plaatsen, coördinatenstelsel),
+`PileCoordinateOpenCheck` (vraag bij openen).
