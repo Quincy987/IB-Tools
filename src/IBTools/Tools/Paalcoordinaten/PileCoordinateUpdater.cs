@@ -28,7 +28,11 @@ namespace IBTools.Tools.Paalcoordinaten
     /// </remarks>
     public sealed class PileCoordinateUpdater : IUpdater
     {
-        private static readonly Guid UpdaterGuid = new Guid("6C3B7E1A-4F25-4D8B-9A61-2E7F0C5D8B34");
+        /// <summary>Fixed id of this updater (with the add-in id it forms the UpdaterId).</summary>
+        public static readonly Guid UpdaterGuid = new Guid("6C3B7E1A-4F25-4D8B-9A61-2E7F0C5D8B34");
+
+        /// <summary>Id of the registered updater, or null (e.g. for DisableUpdater in tests).</summary>
+        public static UpdaterId RegisteredId { get; private set; }
 
         private readonly UpdaterId _id;
 
@@ -60,6 +64,7 @@ namespace IBTools.Tools.Paalcoordinaten
 
                 UpdaterRegistry.AddTrigger(_id, CoordinateSystemFilter(), Element.GetChangeTypeAny());
 
+                RegisteredId = _id;
                 Logger.Info("Paalcoördinaten: updater registered (optional)");
                 return true;
             }
@@ -78,6 +83,7 @@ namespace IBTools.Tools.Paalcoordinaten
                 {
                     UpdaterRegistry.UnregisterUpdater(_id);
                 }
+                RegisteredId = null;
             }
             catch (Exception ex)
             {
@@ -141,12 +147,12 @@ namespace IBTools.Tools.Paalcoordinaten
 
                 if (evaluation.PendingCount == 0)
                 {
-                    Logger.Debug($"Paalcoördinaten updater: {what}; niets te schrijven ({evaluation.Report.BuildSummary()})");
+                    Logger.Debug($"Paalcoördinaten updater: '{doc.Title}' {what}; niets te schrijven ({evaluation.Report.BuildSummary()})");
                     return;
                 }
 
                 PileCoordinateService.ApplyWithoutTransaction(evaluation);
-                Logger.Info($"Paalcoördinaten updater: {what}; {evaluation.PendingCount} geschreven: " +
+                Logger.Info($"Paalcoördinaten updater: '{doc.Title}' {what}; {evaluation.PendingCount} geschreven: " +
                             string.Join(", ", evaluation.PendingIds) + " (" + evaluation.Report.BuildSummary() + ")");
             }
             catch (Exception ex)
