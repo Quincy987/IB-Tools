@@ -33,6 +33,7 @@
     .\build.ps1 -RevitVersion 2025 -NoDeploy
     .\build.ps1 -Debug                    # Revit started with IBTOOLS_DEBUG=1 (logs: %LOCALAPPDATA%\IBTools\logs)
     .\build.ps1 -OpenFile C:\temp\copy.rvt  # start Revit with a (copy of a) model
+    (The started Revit gets IBTOOLS_PILECHECK=0, no open-check question, unless it is already set.)
 #>
 
 param(
@@ -196,6 +197,12 @@ try {
         if ($Debug) {
             $env:IBTOOLS_DEBUG = "1"
             Write-Host "    Debug logging ENABLED ($env:LOCALAPPDATA\IBTools\logs\)" -ForegroundColor Magenta
+        }
+        # The open check of Paalcoordinaten asks a question in a modal dialog; a test Revit
+        # started here must never hang on it. The caller can choose otherwise ($env:IBTOOLS_PILECHECK = "1").
+        if (-not $env:IBTOOLS_PILECHECK) {
+            $env:IBTOOLS_PILECHECK = "0"
+            Write-Host "    IBTOOLS_PILECHECK=0: geen vraag over paalcoordinaten bij openen (zet 1 om die te testen)" -ForegroundColor Gray
         }
         if ($OpenFile) {
             $proc = Start-Process -FilePath $RevitExe -ArgumentList ('"{0}"' -f (Resolve-Path $OpenFile).Path) -PassThru

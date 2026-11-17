@@ -8,17 +8,72 @@ using IBTools.Tools.Paalcoordinaten.Core;
 
 namespace IBTools.Tools.Paalcoordinaten
 {
+    /// <summary>Which elements an evaluation looks at, and how they are reported.</summary>
+    public enum PileScope
+    {
+        /// <summary>All structural foundations; foundations without the parameters are ignored.</summary>
+        WholeModel,
+
+        /// <summary>The user's selection: every selected foundation gets a line in the report.</summary>
+        Selection,
+
+        /// <summary>
+        /// Foundations changed in a transaction (updater): as for the whole model, foundations
+        /// without the parameters are ignored; logging stays at debug level.
+        /// </summary>
+        Changed
+    }
+
+    /// <summary>
+    /// Outcome of <see cref="PileCoordinateService.Evaluate"/>: the report (as the button shows
+    /// it) plus the writes that would bring the stale piles up to date. Nothing is written yet.
+    /// </summary>
+    public sealed class PileCoordinateEvaluation
+    {
+        internal PileCoordinateEvaluation(PileCoordinateReport report)
+        {
+            Report = report;
+        }
+
+        public PileCoordinateReport Report { get; }
+
+        /// <summary>The base point self-test passed (otherwise nothing may be written at all).</summary>
+        public bool SelfTestPassed { get; internal set; }
+
+        /// <summary>
+        /// The model is on coordinates (the internal-to-shared transform is not the identity).
+        /// The button writes anyway, with a warning; automatic writing only happens when true.
+        /// </summary>
+        public bool OnCoordinates { get; internal set; }
+
+        /// <summary>Automatic writing (updater, open check) is allowed for this model.</summary>
+        public bool AllowsAutomaticWrite => SelfTestPassed && OnCoordinates;
+
+        /// <summary>Number of piles that would be written.</summary>
+        public int PendingCount => Pending.Count;
+
+        /// <summary>Element ids of the piles that would be written (for the log).</summary>
+        public IEnumerable<long> PendingIds => Pending.Select(p => p.Outcome.ElementId);
+
+        internal List<PileCoordinateService.PendingWrite> Pending { get; } = new List<PileCoordinateService.PendingWrite>();
+
+        internal ForgeTypeId LengthUnit { get; set; }
+    }
+
     /// <summary>
     /// Revit side of "Paalcoördinaten": collects the piles, converts their insertion point to
     /// shared (RD) coordinates with the project location transform and writes
-    /// X-/Y-coördinaat_funderingspaal in one transaction, only where the value changes.
+    /// X-/Y-coördinaat_funderingspaal, only where the value changes.
     /// The calculations live in <see cref="PileCoordinateMath"/> (Revit-free, unit-tested).
+    /// Three callers share <see cref="Evaluate"/>: the button (<see cref="Run"/>), the updater
+    /// that follows moved piles (<see cref="PileCoordinateUpdater"/>) and the check when a model
+    /// is opened (<see cref="PileCoordinateOpenCheck"/>).
     /// </summary>
     public class PileCoordinateService
     {
         public const string TransactionName = "IB Tools: Paalcoördinaten";
 
-        private sealed class PendingWrite
+        internal sealed class PendingWrite
         {
             public PileOutcome Outcome;
             public Parameter XParam;
@@ -27,10 +82,36 @@ namespace IBTools.Tools.Paalcoordinaten
             public CoordinateParameterKind YKind;
         }
 
+        /// <summary>The button: selected foundations, or the whole model; writes in one transaction.</summary>
         public PileCoordinateReport Run(UIDocument uidoc)
         {
             var doc = uidoc.Document;
+            var selIds = uidoc.Selection.GetElementIds();
+            var evaluation = selIds.Count > 0
+                ? Evaluate(doc, selIds, PileScope.Selection)
+                : Evaluate(doc, null, PileScope.WholeModel);
+
+            if (evaluation.PendingCount > 0)
+            {
+                ApplyInTransaction(doc, evaluation);
+            }
+
+            Logger.Info($"Paalcoördinaten: {evaluation.Report.BuildSummary()}");
+            return evaluation.Report;
+        }
+
+        /// <summary>
+        /// Works out, without writing, what the button would do: transform + base point
+        /// self-test, then per pile the new values and whether they differ from the stored ones.
+        /// </summary>
+        /// <param name="doc">Project document.</param>
+        /// <param name="candidateIds">Elements to look at; null = all structural foundations.</param>
+        /// <param name="scope">How candidates and missing parameters are reported.</param>
+        public static PileCoordinateEvaluation Evaluate(Document doc, ICollection<ElementId> candidateIds, PileScope scope)
+        {
             var report = new PileCoordinateReport();
+            var evaluation = new PileCoordinateEvaluation(report);
+            var quiet = scope == PileScope.Changed; // the updater runs on every move: keep the log readable
 
             // --- Transform + self-test on the project base point -------------------------------
             var total = doc.ActiveProjectLocation.GetTotalTransform();
@@ -43,9 +124,14 @@ namespace IBTools.Tools.Paalcoordinaten
             var bpPos = basePoint.Position;
 
             var selfTest = PileCoordinateMath.SelfTest(planar, bpPos.X, bpPos.Y, ew, ns);
-            Logger.Info($"Paalcoördinaten: base point internal ({bpPos.X:0.######}, {bpPos.Y:0.######}) ft, " +
-                        $"E/W {ew * PileCoordinateMath.FeetToMeters:0.###} m, N/S {ns * PileCoordinateMath.FeetToMeters:0.###} m; " +
-                        $"self-test {selfTest.Direction} {selfTest.DeviationMm:0.####} mm (other {selfTest.OtherDeviationMm:0.####} mm)");
+            if (!quiet)
+            {
+                Logger.Info($"Paalcoördinaten: base point internal ({bpPos.X:0.######}, {bpPos.Y:0.######}) ft, " +
+                            $"E/W {ew * PileCoordinateMath.FeetToMeters:0.###} m, N/S {ns * PileCoordinateMath.FeetToMeters:0.###} m; " +
+                            $"self-test {selfTest.Direction} {selfTest.DeviationMm:0.####} mm (other {selfTest.OtherDeviationMm:0.####} mm)");
+            }
+
+            evaluation.OnCoordinates = !planar.IsIdentity(1.0 / PileCoordinateMath.FeetToMillimeters);
 
             if (!selfTest.Passed)
             {
@@ -53,28 +139,29 @@ namespace IBTools.Tools.Paalcoordinaten
                     $"Zelftest mislukt: het projectbasispunt omgerekend wijkt {selfTest.DeviationMm:0.#} mm af van zijn eigen " +
                     "E/W en N/S (max 1 mm). De coördinaattransformatie van dit model is niet betrouwbaar.";
                 report.Scope = "-";
-                return report;
+                return evaluation;
             }
+            evaluation.SelfTestPassed = true;
             report.Notes.Add($"Zelftest projectbasispunt: afwijking {selfTest.DeviationMm:0.###} mm (max {PileCoordinateMath.SelfTestToleranceMm:0} mm).");
 
-            if (planar.IsIdentity(1.0 / PileCoordinateMath.FeetToMillimeters))
+            if (!evaluation.OnCoordinates)
             {
                 report.Warnings.Add("Het model staat niet op coördinaten: gedeelde coördinaten zijn gelijk aan de interne. " +
                                     "De geschreven waarden zijn dan geen RD-coördinaten.");
             }
 
             var lengthUnit = doc.GetUnits().GetFormatOptions(SpecTypeId.Length).GetUnitTypeId();
+            evaluation.LengthUnit = lengthUnit;
 
-            // --- Candidates: selection (foundations only) or whole model ------------------------
+            // --- Candidates: given ids (foundations only) or whole model ------------------------
             var foundationCat = new ElementId(BuiltInCategory.OST_StructuralFoundation);
-            var selIds = uidoc.Selection.GetElementIds();
-            var fromSelection = selIds.Count > 0;
+            var fromSelection = scope == PileScope.Selection;
             List<Element> candidates;
             var ignoredSelection = 0;
-            if (fromSelection)
+            if (candidateIds != null)
             {
                 candidates = new List<Element>();
-                foreach (var id in selIds)
+                foreach (var id in candidateIds)
                 {
                     var e = doc.GetElement(id);
                     if (e != null && e.Category != null && e.Category.Id == foundationCat && !(e is ElementType))
@@ -86,7 +173,8 @@ namespace IBTools.Tools.Paalcoordinaten
                         ignoredSelection++;
                     }
                 }
-                report.Scope = $"selectie, {candidates.Count} {(candidates.Count == 1 ? "fundering" : "funderingen")}";
+                var count = $"{candidates.Count} {(candidates.Count == 1 ? "fundering" : "funderingen")}";
+                report.Scope = fromSelection ? "selectie, " + count : "gewijzigd, " + count;
             }
             else
             {
@@ -99,7 +187,6 @@ namespace IBTools.Tools.Paalcoordinaten
             }
 
             var notTargets = 0;
-            var pending = new List<PendingWrite>();
             var outsideRd = 0;
             var kindsSeen = new HashSet<string>();
 
@@ -143,40 +230,55 @@ namespace IBTools.Tools.Paalcoordinaten
                         $"parametertype niet ondersteund (X {Describe(xParam, xKind)}, Y {Describe(yParam, yKind)})"));
                     continue;
                 }
+
+                // New values first (when there is an insertion point), so that a pile that cannot
+                // be written now still tells whether it is out of date (open check).
+                var location = e.Location as LocationPoint;
+                CoordinateChange xChange = null;
+                CoordinateChange yChange = null;
+                var withinRd = true;
+                if (location != null)
+                {
+                    var p = location.Point;
+                    selfTest.InternalToShared.Apply(p.X, p.Y, out var sharedX, out var sharedY);
+                    var xMeters = PileCoordinateMath.FeetToRoundedMeters(sharedX);
+                    var yMeters = PileCoordinateMath.FeetToRoundedMeters(sharedY);
+                    withinRd = PileCoordinateMath.IsWithinRd(xMeters, yMeters);
+                    xChange = Decide(xParam, xKind, xMeters, lengthUnit);
+                    yChange = Decide(yParam, yKind, yMeters, lengthUnit);
+                }
+
+                // Same skip reasons, in the same order as before.
+                string block;
                 if (xParam.IsReadOnly || yParam.IsReadOnly)
                 {
-                    report.Outcomes.Add(PileOutcome.Skip(id, label, "parameter is alleen-lezen (formule of vergrendeld)"));
-                    continue;
+                    block = "parameter is alleen-lezen (formule of vergrendeld)";
                 }
-                if (e.GroupId != ElementId.InvalidElementId && (!VariesAcrossGroups(xParam) || !VariesAcrossGroups(yParam)))
+                else if (e.GroupId != ElementId.InvalidElementId && (!VariesAcrossGroups(xParam) || !VariesAcrossGroups(yParam)))
                 {
-                    report.Outcomes.Add(PileOutcome.Skip(id, label, "zit in een groep en de parameter mag niet per groep verschillen"));
-                    continue;
+                    block = "zit in een groep en de parameter mag niet per groep verschillen";
                 }
-                var editBlock = WorksharingBlock(doc, e.Id);
-                if (editBlock != null)
+                else
                 {
-                    report.Outcomes.Add(PileOutcome.Skip(id, label, editBlock));
-                    continue;
+                    block = WorksharingBlock(doc, e.Id);
                 }
-                var location = e.Location as LocationPoint;
-                if (location == null)
+                if (block == null && location == null)
                 {
-                    report.Outcomes.Add(PileOutcome.Skip(id, label, "geen invoegpunt"));
+                    block = "geen invoegpunt";
+                }
+                if (block != null)
+                {
+                    var skipped = PileOutcome.Skip(id, label, block);
+                    skipped.X = xChange;
+                    skipped.Y = yChange;
+                    report.Outcomes.Add(skipped);
                     continue;
                 }
 
-                var p = location.Point;
-                selfTest.InternalToShared.Apply(p.X, p.Y, out var sharedX, out var sharedY);
-                var xMeters = PileCoordinateMath.FeetToRoundedMeters(sharedX);
-                var yMeters = PileCoordinateMath.FeetToRoundedMeters(sharedY);
-                if (!PileCoordinateMath.IsWithinRd(xMeters, yMeters))
+                if (!withinRd)
                 {
                     outsideRd++;
                 }
-
-                var xChange = Decide(xParam, xKind, xMeters, lengthUnit);
-                var yChange = Decide(yParam, yKind, yMeters, lengthUnit);
                 var outcome = new PileOutcome
                 {
                     ElementId = id,
@@ -188,14 +290,17 @@ namespace IBTools.Tools.Paalcoordinaten
                 report.Outcomes.Add(outcome);
                 if (outcome.Status == PileStatus.Written)
                 {
-                    pending.Add(new PendingWrite { Outcome = outcome, XParam = xParam, YParam = yParam, XKind = xKind, YKind = yKind });
+                    evaluation.Pending.Add(new PendingWrite { Outcome = outcome, XParam = xParam, YParam = yParam, XKind = xKind, YKind = yKind });
                 }
             }
 
             foreach (var k in kindsSeen)
             {
                 report.Notes.Add("Parametertype " + k);
-                Logger.Info("Paalcoördinaten: parameter types " + k);
+                if (!quiet)
+                {
+                    Logger.Info("Paalcoördinaten: parameter types " + k);
+                }
             }
             if (kindsSeen.Count > 0)
             {
@@ -214,43 +319,55 @@ namespace IBTools.Tools.Paalcoordinaten
                 report.Warnings.Add($"{outsideRd} {(outsideRd == 1 ? "paal ligt" : "palen liggen")} buiten het RD-bereik: staat het model op coördinaten?");
             }
 
-            if (pending.Count > 0)
-            {
-                Write(doc, pending, lengthUnit, report);
-            }
-
-            Logger.Info($"Paalcoördinaten: {report.BuildSummary()}");
-            return report;
+            return evaluation;
         }
 
-        private static void Write(Document doc, List<PendingWrite> pending, ForgeTypeId lengthUnit, PileCoordinateReport report)
+        /// <summary>
+        /// Writes the pending values in one transaction "IB Tools: Paalcoördinaten" (one Ctrl+Z).
+        /// Used by the button and the open check.
+        /// </summary>
+        public static void ApplyInTransaction(Document doc, PileCoordinateEvaluation evaluation)
         {
             using (var t = new Transaction(doc, TransactionName))
             {
                 t.Start();
-                foreach (var w in pending)
-                {
-                    try
-                    {
-                        var ok = (w.Outcome.X.Unchanged || Set(w.XParam, w.XKind, w.Outcome.X.NewMeters, lengthUnit))
-                              && (w.Outcome.Y.Unchanged || Set(w.YParam, w.YKind, w.Outcome.Y.NewMeters, lengthUnit));
-                        if (!ok)
-                        {
-                            MarkFailed(w.Outcome, "Revit weigerde de waarde");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Error($"Paalcoördinaten: writing element {w.Outcome.ElementId} failed", ex);
-                        MarkFailed(w.Outcome, "schrijven mislukt: " + ex.Message);
-                    }
-                }
-
+                ApplyValues(evaluation);
                 var status = t.Commit();
                 if (status != TransactionStatus.Committed)
                 {
-                    report.Error = $"Revit heeft de wijziging teruggedraaid (transactie: {status}).";
+                    evaluation.Report.Error = $"Revit heeft de wijziging teruggedraaid (transactie: {status}).";
                     Logger.Warn("Paalcoördinaten: transaction not committed: " + status);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Writes the pending values in the transaction that is already open. Only for the
+        /// updater: Revit runs it inside the user's own transaction, where starting one is not
+        /// allowed, and the write then belongs to the user's change (the same Ctrl+Z).
+        /// </summary>
+        public static void ApplyWithoutTransaction(PileCoordinateEvaluation evaluation)
+        {
+            ApplyValues(evaluation);
+        }
+
+        private static void ApplyValues(PileCoordinateEvaluation evaluation)
+        {
+            foreach (var w in evaluation.Pending)
+            {
+                try
+                {
+                    var ok = (w.Outcome.X.Unchanged || Set(w.XParam, w.XKind, w.Outcome.X.NewMeters, evaluation.LengthUnit))
+                          && (w.Outcome.Y.Unchanged || Set(w.YParam, w.YKind, w.Outcome.Y.NewMeters, evaluation.LengthUnit));
+                    if (!ok)
+                    {
+                        MarkFailed(w.Outcome, "Revit weigerde de waarde");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error($"Paalcoördinaten: writing element {w.Outcome.ElementId} failed", ex);
+                    MarkFailed(w.Outcome, "schrijven mislukt: " + ex.Message);
                 }
             }
         }
