@@ -125,7 +125,10 @@ namespace IBTools.Tools.Paalcoordinaten
                 }
                 else
                 {
-                    var piles = modified.Concat(added).Distinct().ToList();
+                    // Instances only: loading a pile family adds types of this category as well.
+                    var piles = modified.Concat(added).Distinct()
+                        .Where(id => !(doc.GetElement(id) is ElementType))
+                        .ToList();
                     if (piles.Count == 0)
                     {
                         return;

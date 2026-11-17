@@ -262,7 +262,7 @@ namespace IBTools.RevitHarness
             var piles = new List<ElementId>();
             using (var t = new Transaction(doc, "harness: palen"))
             {
-                t.Start();
+                Start(t);
                 foreach (var p in new[] { new XYZ(0, 0, 0), new XYZ(10, 0, 0), new XYZ(10, 8, 0), new XYZ(0, 8, 0) })
                 {
                     piles.Add(PlacePile(doc, symbol, level, p * Ft).Id);
@@ -286,7 +286,7 @@ namespace IBTools.RevitHarness
             mark = IbLogLength();
             using (var t = new Transaction(doc, "harness: op coördinaten"))
             {
-                t.Start();
+                Start(t);
                 doc.ActiveProjectLocation.SetProjectPosition(XYZ.Zero, new ProjectPosition(121000 * Ft, 487000 * Ft, 0, 10.0 * Math.PI / 180.0));
                 var bp = BasePoint.GetProjectBasePoint(doc);
                 if (bp.Pinned) bp.Pinned = false;
@@ -301,7 +301,7 @@ namespace IBTools.RevitHarness
             //    start the updater), then the whole model.
             using (var t = new Transaction(doc, "harness: A fout"))
             {
-                t.Start();
+                Start(t);
                 foreach (var id in piles) WriteX(doc, id, WrongX);
                 t.Commit();
             }
@@ -330,7 +330,7 @@ namespace IBTools.RevitHarness
             ElementId copy;
             using (var t = new Transaction(doc, "harness: C kopiëren"))
             {
-                t.Start();
+                Start(t);
                 copy = ElementTransformUtils.CopyElement(doc, piles[2], new XYZ(5, 5, 0) * Ft).First();
                 t.Commit();
             }
@@ -342,7 +342,7 @@ namespace IBTools.RevitHarness
             ElementId added;
             using (var t = new Transaction(doc, "harness: D nieuwe paal"))
             {
-                t.Start();
+                Start(t);
                 added = PlacePile(doc, symbol, level, new XYZ(-6, 3, 0) * Ft).Id;
                 t.Commit();
             }
@@ -354,7 +354,7 @@ namespace IBTools.RevitHarness
             var before = ReadX(doc, piles[0]);
             using (var t = new Transaction(doc, "harness: E1 locatie"))
             {
-                t.Start();
+                Start(t);
                 var loc = doc.ActiveProjectLocation;
                 var p0 = loc.GetProjectPosition(XYZ.Zero);
                 loc.SetProjectPosition(XYZ.Zero, new ProjectPosition(p0.EastWest + 10 * Ft, p0.NorthSouth - 4 * Ft, p0.Elevation, p0.Angle + 5.0 * Math.PI / 180.0));
@@ -368,7 +368,7 @@ namespace IBTools.RevitHarness
             before = ReadX(doc, piles[0]);
             using (var t = new Transaction(doc, "harness: E2 meetpunt"))
             {
-                t.Start();
+                Start(t);
                 var sp = BasePoint.GetSurveyPoint(doc);
                 if (sp.Pinned) sp.Pinned = false;
                 Log("E2. Meetpunt clipped=" + sp.Clipped);
@@ -383,7 +383,7 @@ namespace IBTools.RevitHarness
             _wrongPileId = piles[0].IntegerValue;
             using (var t = new Transaction(doc, "harness: foute X"))
             {
-                t.Start();
+                Start(t);
                 WriteX(doc, piles[0], WrongX);
                 t.Commit();
             }
@@ -440,7 +440,7 @@ namespace IBTools.RevitHarness
             var doc = PaalDoc(active);
             using (var t = new Transaction(doc, "harness: foute X (G4)"))
             {
-                t.Start();
+                Start(t);
                 WriteX(doc, WrongPile, WrongX);
                 t.Commit();
             }
@@ -479,7 +479,7 @@ namespace IBTools.RevitHarness
             // The pile family may carry the parameters itself (shared family parameters).
             using (var t = new Transaction(doc, "harness: probe"))
             {
-                t.Start();
+                Start(t);
                 var probe = PlacePile(doc, symbol, level, XYZ.Zero);
                 var x = XParam(probe);
                 var y = YParam(probe);
@@ -524,7 +524,7 @@ namespace IBTools.RevitHarness
                 cats.Insert(doc.Settings.Categories.get_Item(BuiltInCategory.OST_StructuralFoundation));
                 using (var t = new Transaction(doc, "harness: parameters"))
                 {
-                    t.Start();
+                    Start(t);
                     foreach (var name in new[] { PileCoordinateParameters.XName, PileCoordinateParameters.YName })
                     {
                         doc.ParameterBindings.Insert(group.Definitions.get_Item(name), app.Create.NewInstanceBinding(cats), GroupTypeId.Data);
@@ -545,7 +545,7 @@ namespace IBTools.RevitHarness
             Family family;
             using (var t = new Transaction(doc, "harness: paalfamilie"))
             {
-                t.Start();
+                Start(t);
                 if (!doc.LoadFamily(path, out family))
                 {
                     family = new FilteredElementCollector(doc).OfClass(typeof(Family)).Cast<Family>()
@@ -570,13 +570,51 @@ namespace IBTools.RevitHarness
             }
         }
 
-        private static void Move(Document doc, ElementId id, XYZ by, string name)
+        private void Move(Document doc, ElementId id, XYZ by, string name)
         {
             using (var t = new Transaction(doc, name))
             {
-                t.Start();
+                Start(t);
                 ElementTransformUtils.MoveElement(doc, id, by);
                 t.Commit();
+            }
+        }
+
+        /// <summary>
+        /// Starts a harness transaction whose warnings are logged and dismissed in the transaction
+        /// itself, so no Revit dialog decides the outcome (a dialog answered with OK can roll the
+        /// whole transaction back). Errors are logged and left to Revit.
+        /// </summary>
+        private void Start(Transaction t)
+        {
+            t.Start();
+            var o = t.GetFailureHandlingOptions();
+            o.SetFailuresPreprocessor(new LoggingPreprocessor(this, t.GetName()));
+            t.SetFailureHandlingOptions(o);
+        }
+
+        private sealed class LoggingPreprocessor : IFailuresPreprocessor
+        {
+            private readonly PaalcoordinatenHarness _h;
+            private readonly string _name;
+
+            public LoggingPreprocessor(PaalcoordinatenHarness h, string name)
+            {
+                _h = h;
+                _name = name;
+            }
+
+            public FailureProcessingResult PreprocessFailures(FailuresAccessor a)
+            {
+                foreach (var m in a.GetFailureMessages())
+                {
+                    _h.Log("   melding in '" + _name + "' (" + m.GetSeverity() + "): " + m.GetDescriptionText());
+                    if (m.GetSeverity() == FailureSeverity.Warning)
+                    {
+                        a.DeleteWarning(m);
+                    }
+                }
+                return FailureProcessingResult.Continue;
             }
         }
 

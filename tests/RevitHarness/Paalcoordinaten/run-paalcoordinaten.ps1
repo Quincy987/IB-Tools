@@ -5,7 +5,7 @@
     touched), deploys IB Tools + the harness, starts Revit 2023 with debug logging and a copy of
     the IB template, lets PaalcoordinatenHarness run cases A-G (ui-test-paalcoordinaten.ps1
     clicks "Nu bijwerken" for G2), then case H: closes its own Revit, starts Revit once more
-    WITHOUT the IB Tools manifest and opens the saved model. Once the lock is ours it ALWAYS
+    WITHOUT the IB Tools manifest (put back once that Revit's harness is done) and opens the saved model. Once the lock is ours it ALWAYS
     releases it (closes only its own Revit), puts the IB Tools manifest back and removes the
     harness from the Addins folder.
 .EXAMPLE
@@ -149,11 +149,12 @@ public static class IbDialogs {
         $procH = Start-Process -FilePath $revitExe -ArgumentList ('"{0}"' -f (Join-Path $jobH "paal zonder IB Tools.rvt")) -PassThru
         Save-IBToolsRevitRecord -Process $procH -Owner $owner -Version "2023"
         Write-Host "Revit zonder IB Tools: pid $($procH.Id)"
-        Wait-Harness $jobH $procH.Id {
-            # Add-ins are loaded: give the IB Tools manifest back right away.
-            Move-Item -Force $ibManifestAside $ibManifest
-            $script:manifestMoved = $false
-        }
+        # The IB Tools manifest only comes back after the harness is done: Revit 2023 reads
+        # add-in manifests after the harness has started (seen: IB Tools started 9 s after the
+        # harness when the manifest was put back at started.txt).
+        Wait-Harness $jobH $procH.Id $null
+        Move-Item -Force $ibManifestAside $ibManifest
+        $manifestMoved = $false
     }
 }
 finally {

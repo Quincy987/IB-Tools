@@ -91,8 +91,8 @@ waarden komen uit Revits eigen *Report Shared Coordinates*, niet uit de omrekeni
   wordt door `Paalcoordinaten/ui-test-paalcoordinaten.ps1` aangeklikt ("Nu bijwerken") en het
   rapport gesloten; daarna geen vraag meer; met `IBTOOLS_PILECHECK=0` geen vraag maar wel de telling
   in het log;
-- H. daarna sluit het script zijn eigen Revit, zet het manifest van IB Tools even opzij (alleen
-  tijdens het opstarten, binnen het slot) en opent het opgeslagen model in een Revit zonder IB Tools:
+- H. daarna sluit het script zijn eigen Revit, zet het manifest van IB Tools opzij (binnen het slot,
+  tot het harnas van die Revit klaar is) en opent het opgeslagen model in een Revit zonder IB Tools:
   geen melding over een ontbrekende updater (`job-h\results.txt`).
 
 Beelden in de jobmap: `ui-vraag.png` (de vraag bij openen), `ui-rapport.png` (het rapport na
