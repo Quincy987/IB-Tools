@@ -251,9 +251,9 @@ namespace IBTools.RevitHarness
             var template = Path.Combine(_job, "IB_template.rte");
             var doc = app.NewProjectDocument(template);
             Log("Nieuw project uit " + template + ": '" + doc.Title + "'");
-            EnsureParameters(app, doc);
             var symbol = LoadPileFamily(doc);
             var level = new FilteredElementCollector(doc).OfClass(typeof(Level)).Cast<Level>().OrderBy(l => Math.Abs(l.Elevation)).First();
+            EnsureParameters(app, doc, symbol, level);
             Log("Level: " + level.Name + "; familie " + symbol.FamilyName + ": " + symbol.Name + " (" + symbol.Family.FamilyPlacementType + ")");
             LogCoordinates(doc, "template");
 
@@ -459,8 +459,22 @@ namespace IBTools.RevitHarness
             File.WriteAllText(Path.Combine(_job, "done.txt"), _fails == 0 ? "ok" : "fout " + _fails);
         }
 
-        private void EnsureParameters(Autodesk.Revit.ApplicationServices.Application app, Document doc)
+        private void EnsureParameters(Autodesk.Revit.ApplicationServices.Application app, Document doc, FamilySymbol symbol, Level level)
         {
+            // The pile family may carry the parameters itself (shared family parameters).
+            using (var t = new Transaction(doc, "harness: probe"))
+            {
+                t.Start();
+                var probe = PlacePile(doc, symbol, level, XYZ.Zero);
+                var x = XParam(probe);
+                var y = YParam(probe);
+                Log("Paal uit de familie: X-parameter " + Describe(x) + ", Y-parameter " + Describe(y));
+                t.RollBack();
+                if (x != null && y != null)
+                {
+                    return;
+                }
+            }
             var map = doc.ParameterBindings;
             var it = map.ForwardIterator();
             var bound = new List<string>();
@@ -485,7 +499,7 @@ namespace IBTools.RevitHarness
                 "*PARAM\tGUID\tNAME\tDATATYPE\tDATACATEGORY\tGROUP\tVISIBLE\tDESCRIPTION\tUSERMODIFIABLE\tHIDEWHENNOEDITABLE\r\n" +
                 "PARAM\t" + PileCoordinateParameters.XGuid + "\t" + PileCoordinateParameters.XName + "\tLENGTH\t\t1\t1\t\t1\t0\r\n" +
                 "PARAM\t" + PileCoordinateParameters.YGuid + "\t" + PileCoordinateParameters.YName + "\tLENGTH\t\t1\t1\t\t1\t0\r\n",
-                new UTF8Encoding(false));
+                Encoding.Unicode); // Revit writes shared parameter files as UTF-16
             var old = app.SharedParametersFilename;
             try
             {
@@ -573,6 +587,12 @@ namespace IBTools.RevitHarness
         private void CheckAll(Document doc, List<ElementId> ids, string label)
         {
             foreach (var id in ids) CheckPile(doc, id, label);
+        }
+
+        private static string Describe(Parameter p)
+        {
+            if (p == null) return "ontbreekt";
+            return p.StorageType + (p.IsShared ? " gedeeld " + p.GUID : " niet gedeeld") + (p.Definition is InternalDefinition d && d.VariesAcrossGroups ? "" : "");
         }
 
         private static Parameter XParam(Element e) => e.get_Parameter(PileCoordinateParameters.XGuid) ?? e.LookupParameter(PileCoordinateParameters.XName);

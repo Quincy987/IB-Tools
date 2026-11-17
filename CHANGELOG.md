@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+### Toegevoegd
+- Paalcoördinaten werkt automatisch bij, zonder op de knop te drukken (alleen in een model op
+  coördinaten waarvan de zelftest op het projectbasispunt slaagt):
+  - een paal die je verplaatst, kopieert of nieuw plaatst krijgt direct de juiste
+    X-/Y-coördinaat_funderingspaal, in dezelfde stap (één Ctrl+Z);
+  - wijzigt het coördinatenstelsel (projectbasispunt, meetpunt, projectlocatie), dan worden alle
+    palen bijgewerkt;
+  - bij het openen van een model vraagt IB Tools "Paalcoördinaten bijwerken?" als er palen zijn
+    waarvan de coördinaten niet meer kloppen of leeg zijn: *Nu bijwerken* of *Niet nu*.
+  De automatische update is optioneel geregistreerd: collega's zonder IB Tools krijgen geen
+  melding. `IBTOOLS_PILECHECK=0` zet de vraag bij openen uit (`build.ps1` doet dat voor de Revit die
+  het start). Revit-test: `tests/RevitHarness/Paalcoordinaten/run-paalcoordinaten.ps1`.
+
 ## v2.1.0 — Installatiescript in elke release-zip (2026-11-16)
 
 ### Toegevoegd
