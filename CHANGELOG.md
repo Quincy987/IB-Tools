@@ -18,6 +18,9 @@
   het start). Revit-test: `tests/RevitHarness/Paalcoordinaten/run-paalcoordinaten.ps1`
   (47/47 in Revit 2023, 2/2 in een Revit zonder IB Tools; 2022, 2024 en 2025 alleen gecompileerd),
   verslag in `src/IBTools/Tools/Paalcoordinaten/verify/paalcoordinaten-automatisch-2026-11-17.md`.
+- Demo-video van het automatisch bijwerken:
+  `src/IBTools/Tools/Paalcoordinaten/demo/paalcoordinaten-demo.mp4` (vraag bij openen, verplaatsen met
+  Ctrl+Z/Ctrl+Y, kopiëren), opnieuw op te nemen met `scripts\demo\run-demo.ps1 -Scene paalcoordinaten`.
 
 ## v2.1.0 — Installatiescript in elke release-zip (2026-11-16)
 

@@ -5,7 +5,10 @@
   met titelkaarten en ondertitels. `stills/` zijn de beginbeelden van elke scène.
 - De video van één tool staat bij die tool: Remmingwerk (±75 s: modellijn vóór de kade, venster,
   Plaatsen, resultaat, 3D, Ctrl+Z/Ctrl+Y) in
-  [src/IBTools/Tools/Remmingwerk/demo/](../../src/IBTools/Tools/Remmingwerk/demo/remmingwerk-demo.mp4).
+  [src/IBTools/Tools/Remmingwerk/demo/](../../src/IBTools/Tools/Remmingwerk/demo/remmingwerk-demo.mp4),
+  en Paalcoördinaten automatisch (de vraag bij het openen van het model, een paal verplaatsen
+  naast de palenstaat met Ctrl+Z/Ctrl+Y, een paal kopiëren) in
+  [src/IBTools/Tools/Paalcoordinaten/demo/](../../src/IBTools/Tools/Paalcoordinaten/demo/paalcoordinaten-demo.mp4).
 - Hide/Show (projectielijnen) staat bewust niet in een video: die knop is al bij gebruikers uitgerold.
 
 ## Opnieuw opnemen
@@ -13,6 +16,7 @@
 ```powershell
 .\scripts\demo\run-demo.ps1                      # ibtools-demo.mp4: neemt het Revit-testslot, bouwt, deployt, neemt op, snijdt
 .\scripts\demo\run-demo.ps1 -Scene remmingwerk   # src\IBTools\Tools\Remmingwerk\demo\remmingwerk-demo.mp4 + stills
+.\scripts\demo\run-demo.ps1 -Scene paalcoordinaten   # src\IBTools\Tools\Paalcoordinaten\demo\paalcoordinaten-demo.mp4 + stills
 .\scripts\demo\run-demo.ps1 -CutOnly [-Scene ..] # alleen opnieuw snijden (kaarten/ondertitels) uit de laatste take
 ```
 
@@ -26,6 +30,11 @@
   dezelfde Revit (`exec`, `activate`; sessiesleutel uit `%LOCALAPPDATA%\VibeModel\servers\<port>.json`).
 - `rec.py` neemt het scherm op (±8 fps, jpg-frames); `cut.py` maakt er de mp4 van met kaarten,
   stapbadge en ondertitelbalk (`timeline.json` uit `drive.py`).
+- De scène `paalcoordinaten` start Revit met `IBTOOLS_PILECHECK=1` (anders komt de vraag bij openen
+  niet), slaat de kopie van het model op met lege coördinaten, sluit hem en opent hem opnieuw via
+  VibeModel (`exec` met `trans.Commit()` vooraf: opslaan en openen mag niet binnen een transactie).
+  Wat het filmpje toont, leest het script eerst terug: een bijschrift over Ctrl+Z komt er alleen als
+  de coördinaten echt terug zijn.
 - Vereist: Python 3.12 met `pywinauto`, `pywin32`, `mss`, `av`, `imageio-ffmpeg`, `Pillow`.
 - Scènes, teksten en wachttijden staan in `drive.py` (`mark("card"/"caption", ...)`); `SCENES` koppelt
   de naam uit `-Scene` aan een functie. Let op: na een selectie springt Revit naar het tabblad Modify,

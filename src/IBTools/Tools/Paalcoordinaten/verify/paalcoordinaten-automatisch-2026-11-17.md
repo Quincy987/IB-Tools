@@ -52,6 +52,13 @@ updater binnen in dezelfde transactie (E1, E2, A0), dus er is geen terugval nodi
 - Revit zet de naam van de add-in voor de titel van een TaskDialog: de vraag heet daarom
   "Paalcoördinaten" en staat in beeld als "IB Tools - Paalcoördinaten".
 
+## Ctrl+Z (bij de demo-opname, 2026-11-18)
+
+Bij het opnemen van `demo/paalcoordinaten-demo.mp4` op het kademodel Prinsengracht (40 houten palen
+op RD) is Paal A 2 m verplaatst: X 121108.435 → 121110.382. Eén Ctrl+Z zette de paal én de
+coördinaten terug (X 121108.435), Ctrl+Y zette beide weer op de nieuwe plek. De waarden zijn na
+elke stap teruggelezen uit het model. Een kopie van Paal A kreeg eigen coördinaten (X 121113.302).
+
 ## Niet getest
 
 - Revit 2022, 2024 en 2025: alleen gecompileerd (op deze pc staat alleen Revit 2023).

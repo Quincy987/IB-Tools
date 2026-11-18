@@ -87,7 +87,9 @@ eigen E/W en N/S, dan schrijft hij niets.
 
 ## Demo en test
 
-Demo: [ibtools-demo.mp4](../../../../docs/demo/ibtools-demo.mp4), derde deel (de knop). Getest in
+Demo van het automatisch bijwerken: [paalcoordinaten-demo.mp4](demo/paalcoordinaten-demo.mp4)
+(de vraag bij openen, een paal verplaatsen met Ctrl+Z/Ctrl+Y, een paal kopiëren). Demo van de knop:
+[ibtools-demo.mp4](../../../../docs/demo/ibtools-demo.mp4), derde deel. Getest in
 Revit 2023. De knop zelf heeft geen apart verslag in de repo. Het automatisch bijwerken heeft dat
 wel: [verify/paalcoordinaten-automatisch-2026-11-17.md](verify/paalcoordinaten-automatisch-2026-11-17.md),
 onbemand met `tests/RevitHarness/Paalcoordinaten/run-paalcoordinaten.ps1`: 47/47 controles OK,
