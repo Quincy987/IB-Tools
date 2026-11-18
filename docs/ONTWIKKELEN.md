@@ -37,6 +37,17 @@ IB Tools is één add-in (één dll, één tabblad). Elke tool staat in een eige
    de jobmap, zoals `remmingwerk.txt` voor `Remmingwerk/RemmingwerkHarness.cs`. Testverslag in
    `Tools/<Tool>/verify/`.
 
+8. **Automatisch** (alleen als de tool zonder knop iets moet doen): registreer een updater of een
+   document-event vanuit `App.OnStartup` en meld het af in `App.OnShutdown`, zoals Paalcoördinaten
+   doet (`PileCoordinateUpdater`, `PileCoordinateOpenCheck`). Regels: een updater registreer je
+   **optioneel** (`UpdaterRegistry.RegisterUpdater(updater, true)`), anders krijgen collega's zonder
+   IB Tools bij het openen een melding over een ontbrekende updater; een updater of event-handler
+   gooit nooit een exceptie naar Revit (try/catch met `Logger.Error`); een updater toont geen
+   vensters en start geen transactie (hij draait in die van de gebruiker); mislukt het registreren,
+   dan logt de tool dat en laden de knoppen gewoon. Een vraag in een venster bij openen moet uit te
+   zetten zijn met een omgevingsvariabele (zoals `IBTOOLS_PILECHECK=0`), zodat onbemande Revit-tests
+   er niet op blijven hangen; `build.ps1` zet die voor de Revit die het start.
+
 ## Bouwstenen in Shared/
 
 - `ProjectDocumentAvailability`: knop alleen actief met een project open (niet in de familie-editor).
@@ -46,7 +57,7 @@ IB Tools is één add-in (één dll, één tabblad). Elke tool staat in een eige
 - Resultaten: `ResultDialog.Show(uiapp, titel, samenvatting, details)` met selecteerbare tekst en
   *Kopiëren naar klembord*; `ClipboardHelper.TrySetText/TryGetText`. Diagnose- en foutmeldingen
   altijd met kopiëren naar klembord (`copyImmediately: true`).
-- `Logger.Info/Warn/Error`: schrijft alleen met `IBTOOLS_DEBUG=1`, naar `%LOCALAPPDATA%\IBTools\logs\`.
+- `Logger.Info/Warn/Error/Debug`: schrijft alleen met `IBTOOLS_DEBUG=1`, naar `%LOCALAPPDATA%\IBTools\logs\`.
 - `CoordinateInputParser`: getallen en RD-coördinaten uit tekst (komma of punt, m of mm).
 
 ## Taal en versies

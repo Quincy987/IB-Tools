@@ -2,7 +2,7 @@
 
 Integratietests in een echte Revit 2023, één job per tool. Geen onderdeel van de add-in.
 `HarnessApp.cs` is het startpunt (en de Modelpunt-job); de bestanden per job staan in een submap
-(`Modelpunt/`, `Remmingwerk/`).
+(`Modelpunt/`, `Remmingwerk/`, `Paalcoordinaten/`).
 
 ## Modelpunt op coördinaat
 
@@ -63,3 +63,41 @@ Wat het controleert (`%LOCALAPPDATA%\IBTools\test\remmingwerk\job\results.txt`, 
 
 Beelden in de jobmap: `remmingwerk-3d*.png` (geëxporteerde 3D-view), `ui-window.png`,
 `ui-result.png`, `ui-model-after.png`.
+
+## Paalcoördinaten (automatisch bijwerken)
+
+Jobmap met `paalcoordinaten.txt` draait `Paalcoordinaten/PaalcoordinatenHarness.cs`. Alles in één
+script, met het slot eerst (bezet = exit 2, niets aangeraakt) en `release` in `finally`:
+
+```powershell
+$env:IBTOOLS_LOCK_OWNER = "<threadnaam>"
+.\tests\RevitHarness\Paalcoordinaten\run-paalcoordinaten.ps1        # -SkipH: zonder stap H
+```
+
+Het script kopieert het IB-template en `NLI_Funderingspaal.rfa` (van K:, anders de cache
+`%LOCALAPPDATA%\IBTools\paalcoordinaten-src`) en start Revit 2023 met debug-log (`build.ps1 -Deploy
+-Debug`). Het harnas maakt zelf een nieuw project uit het template en controleert
+(`%LOCALAPPDATA%\IBTools\test\paalcoordinaten\job\results.txt`, regels `OK`/`FOUT`; verwachte
+waarden komen uit Revits eigen *Report Shared Coordinates*, niet uit de omrekening van de add-in):
+
+- updater geregistreerd en optioneel;
+- F. model niet op coördinaten: plaatsen en verplaatsen schrijft niets, één logregel;
+- A0. op coördinaten zetten: de updater werkt alle palen bij;
+- A. alle X met de hand fout zetten (blijft staan: de updater reageert niet op parameters), dan
+  de service voor het hele model zoals de knop: alles geschreven; I. tweede keer: knop-rapport
+  "Alles ongewijzigd";
+- B. paal verplaatsen: waarden volgen, precies één updater-run (geen lus); C. kopie; D. nieuwe paal;
+- E1. projectlocatie wijzigen, E2. meetpunt verplaatsen: alle palen kloppen weer;
+- G1-G4, via heropenen in de UI (ExternalEvent): "Niet nu" laat de waarde staan; de echte vraag
+  wordt door `Paalcoordinaten/ui-test-paalcoordinaten.ps1` aangeklikt ("Nu bijwerken") en het
+  rapport gesloten; daarna geen vraag meer; met `IBTOOLS_PILECHECK=0` geen vraag maar wel de telling
+  in het log;
+- H. daarna sluit het script zijn eigen Revit, zet het manifest van IB Tools opzij (binnen het slot,
+  tot het harnas van die Revit klaar is) en opent het opgeslagen model in een Revit zonder IB Tools:
+  geen melding over een ontbrekende updater (`Paalcoordinaten/ZonderIbToolsHarness.cs`,
+  `job-h\results.txt`).
+
+Exitcode: 0 als alles OK is, 1 bij een FOUT of een afgebroken run, 2 als het testslot bezet is.
+
+Beelden in de jobmap: `ui-vraag.png` (de vraag bij openen), `ui-rapport.png` (het rapport na
+"Nu bijwerken").

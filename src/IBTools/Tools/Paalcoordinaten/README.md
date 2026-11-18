@@ -30,6 +30,37 @@ met *Kopiëren naar klembord*. Alleen waarden die echt veranderen worden geschre
 (één Ctrl+Z). Een lengteparameter krijgt de meterwaarde in de lengte-eenheid van het project, net
 als in het Dynamo-script, zodat de palenstaat dezelfde getallen blijft tonen.
 
+## Automatisch bijwerken
+
+Naast de knop houdt IB Tools de coördinaten zelf bij, zodat er geen oude waarden op tekening komen:
+
+- **Paal verplaatst, gekopieerd of nieuw geplaatst**: de paal krijgt direct de juiste coördinaten,
+  in dezelfde stap als de verplaatsing (één Ctrl+Z draait beide terug). Er komt geen venster.
+- **Coördinatenstelsel gewijzigd** (projectbasispunt, meetpunt of projectlocatie, bijvoorbeeld via
+  *Specify Coordinates*): alle palen worden bijgewerkt, op dezelfde manier.
+- **Model openen**: IB Tools controleert of er palen zijn waarvan de opgeslagen coördinaten niet
+  meer kloppen met hun plek (bijvoorbeeld verschoven door iemand zonder IB Tools, of nog nooit
+  ingevuld; lege parameters tellen ook mee, dus een model dat nooit coördinaten had wordt één keer
+  gevraagd). Zo ja, dan vraagt een venster *Paalcoördinaten bijwerken?* met **Nu bijwerken**
+  (schrijft alles in één stap en toont daarna het rapport) of **Niet nu** (verandert niets; bij de
+  volgende keer openen komt de vraag terug). Palen die nu niet kunnen (uitgecheckt door een collega
+  e.d.) worden in de vraag apart geteld.
+
+Dit gebeurt **alleen in een model op coördinaten** (gedeelde coördinaten niet gelijk aan de interne)
+waarvan de zelftest op het projectbasispunt slaagt. In een model dat niet op coördinaten staat
+wordt niets automatisch geschreven en komt er geen vraag; de knop werkt daar wel, met de
+waarschuwing.
+
+Dezelfde regels als bij de knop: alleen waarden die echt veranderen worden geschreven, en een paal
+wordt overgeslagen om de redenen onder *Beperkingen*. Een paal waarvan je de coördinaat-parameter
+met de hand wijzigt, wordt niet meteen overschreven; dat vangt de controle bij het openen op.
+
+Collega's zonder IB Tools openen zo'n model gewoon: de automatische update is *optioneel*
+geregistreerd en geeft bij hen geen melding.
+
+Voor onbemande tests: met de omgevingsvariabele `IBTOOLS_PILECHECK=0` komt de vraag bij openen niet
+(de controle draait wel en staat in het log). `build.ps1` zet die voor de Revit die het start.
+
 ## Verschillen met Dynamo
 
 - Het script nam altijd het hele model; de knop werkt ook op alleen de geselecteerde palen.
@@ -38,6 +69,8 @@ als in het Dynamo-script, zodat de palenstaat dezelfde getallen blijft tonen.
 - Het script rekende zelf om via het projectbasispunt; de knop gebruikt de omrekening van Revit en
   controleert die eerst op het basispunt.
 - De knop schrijft alleen wat verandert en geeft een rapport per paal.
+- Het script moest je zelf draaien; IB Tools werkt verplaatste, gekopieerde en nieuwe palen zelf bij
+  en vraagt bij het openen of verouderde palen bijgewerkt moeten worden.
 
 ## Beperkingen
 
@@ -54,6 +87,14 @@ eigen E/W en N/S, dan schrijft hij niets.
 
 ## Demo en test
 
-Demo: [ibtools-demo.mp4](../../../../docs/demo/ibtools-demo.mp4), derde deel. Getest in Revit 2023;
-er is geen apart verslag in de repo. De rekenkern (`Core/`) heeft unit-tests in
-`tests/IBTools.Tests/Paalcoordinaten`. Code: `WritePileCoordinatesCommand`, `PileCoordinateService`.
+Demo van het automatisch bijwerken: [paalcoordinaten-demo.mp4](demo/paalcoordinaten-demo.mp4)
+(de vraag bij openen, een paal verplaatsen met Ctrl+Z/Ctrl+Y, een paal kopiëren). Demo van de knop:
+[ibtools-demo.mp4](../../../../docs/demo/ibtools-demo.mp4), derde deel. Getest in
+Revit 2023. De knop zelf heeft geen apart verslag in de repo. Het automatisch bijwerken heeft dat
+wel: [verify/paalcoordinaten-automatisch-2026-11-17.md](verify/paalcoordinaten-automatisch-2026-11-17.md),
+onbemand met `tests/RevitHarness/Paalcoordinaten/run-paalcoordinaten.ps1`: 47/47 controles OK,
+plus 2/2 in een Revit zonder IB Tools. Revit 2022, 2024 en 2025 zijn alleen gecompileerd. De
+rekenkern (`Core/`) heeft unit-tests in `tests/IBTools.Tests/Paalcoordinaten`. Code:
+`WritePileCoordinatesCommand` (knop), `PileCoordinateService` (gedeelde evaluatie),
+`PileCoordinateUpdater` (verplaatsen/kopiëren/plaatsen, coördinatenstelsel),
+`PileCoordinateOpenCheck` (vraag bij openen).

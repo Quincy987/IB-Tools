@@ -33,6 +33,8 @@ namespace IBTools
     public class App : IExternalApplication
     {
         private ProjectionToggleButton _toggleButton;
+        private PileCoordinateUpdater _pileUpdater;
+        private PileCoordinateOpenCheck _pileOpenCheck;
 
         /// <summary>
         /// Called when Revit loads the add-in.
@@ -76,6 +78,10 @@ namespace IBTools
                     "Plaatst een standaard remmingwerk (buispalen, stalen stijlen en gordingen, wrijfgordingen en wrijfstijlen) langs de gekozen modellijn(en). De tekenrichting bepaalt de kant; alles in één Ctrl+Z.",
                     iconName: "remmingwerk", availability: typeof(ProjectDocumentAvailability));
 
+                // Paalcoördinaten, automatic: moved/copied/new piles (updater) and the check when a
+                // model is opened. Failures are logged inside; the buttons above still load.
+                RegisterPileCoordinateAutomation(application);
+
                 // Set references on command for access during execution
                 // This is a simple alternative to full DI container
                 ToggleProjectionCommand.VisibilityService = visibility;
@@ -94,6 +100,39 @@ namespace IBTools
         }
 
         /// <summary>
+        /// Paalcoördinaten without the button: the updater follows moved, copied and new piles and
+        /// coordinate-system changes; the open check asks to update stale piles. Never makes
+        /// startup fail.
+        /// </summary>
+        private void RegisterPileCoordinateAutomation(UIControlledApplication application)
+        {
+            try
+            {
+                _pileUpdater = new PileCoordinateUpdater(application.ActiveAddInId);
+                if (!_pileUpdater.Register())
+                {
+                    _pileUpdater = null;
+                }
+            }
+            catch (System.Exception ex)
+            {
+                _pileUpdater = null;
+                Logger.Error("Paalcoördinaten updater not available", ex);
+            }
+
+            try
+            {
+                _pileOpenCheck = new PileCoordinateOpenCheck();
+                _pileOpenCheck.Register(application);
+            }
+            catch (System.Exception ex)
+            {
+                _pileOpenCheck = null;
+                Logger.Error("Paalcoördinaten open check not available", ex);
+            }
+        }
+
+        /// <summary>
         /// Called when Revit is closing.
         /// </summary>
         /// <param name="application">Revit UI controlled application.</param>
@@ -106,6 +145,10 @@ namespace IBTools
             {
                 // Cleanup the toggle button (unregister events)
                 _toggleButton?.Cleanup(application);
+
+                // Paalcoördinaten: updater and open check
+                _pileUpdater?.Unregister();
+                _pileOpenCheck?.Unregister(application);
 
                 // Clear static references to prevent memory leaks
                 ToggleProjectionCommand.VisibilityService = null;

@@ -15,7 +15,8 @@ namespace IBTools.RevitHarness
     /// <summary>
     /// Revit integration test for "Modelpunt op coördinaat" (see README.md). Runs only when
     /// IBTOOLS_HARNESS_JOB is set; writes its findings to that folder. A job folder with a file
-    /// remmingwerk.txt runs <see cref="RemmingwerkHarness"/> instead.
+    /// remmingwerk.txt runs <see cref="RemmingwerkHarness"/> instead, paalcoordinaten.txt runs
+    /// <see cref="PaalcoordinatenHarness"/>, zonder-ibtools.txt runs <see cref="ZonderIbToolsHarness"/>.
     /// </summary>
     /// <remarks>
     /// Stage 0 (first idle with a document): on the opened model copy
@@ -48,6 +49,23 @@ namespace IBTools.RevitHarness
                 return Result.Succeeded; // inactive in every other Revit
             }
             File.WriteAllText(Path.Combine(_job, "started.txt"), System.Diagnostics.Process.GetCurrentProcess().Id.ToString());
+            if (File.Exists(Path.Combine(_job, "paalcoordinaten.txt")))
+            {
+                // Paalcoördinaten job (see PaalcoordinatenHarness): its own dialog handling, because
+                // it answers or leaves the open-check question depending on the case.
+                var paal = new PaalcoordinatenHarness(_job);
+                application.Idling += paal.OnIdling;
+                application.DialogBoxShowing += paal.OnDialogBoxShowing;
+                return Result.Succeeded;
+            }
+            if (File.Exists(Path.Combine(_job, "zonder-ibtools.txt")))
+            {
+                // Paalcoördinaten case H: a Revit without IB Tools opens the model (Revit API only).
+                var h = new ZonderIbToolsHarness(_job);
+                application.Idling += h.OnIdling;
+                application.DialogBoxShowing += h.OnDialogBoxShowing;
+                return Result.Succeeded;
+            }
             if (File.Exists(Path.Combine(_job, "remmingwerk.txt")))
             {
                 // Remmingwerk job (see RemmingwerkHarness); the dialog handling below is shared.

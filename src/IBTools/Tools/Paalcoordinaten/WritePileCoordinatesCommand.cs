@@ -15,7 +15,8 @@ namespace IBTools.Tools.Paalcoordinaten
     [Regeneration(RegenerationOption.Manual)]
     public class WritePileCoordinatesCommand : IExternalCommand
     {
-        private const string Title = "Paalcoördinaten";
+        /// <summary>Button label and title of its report window.</summary>
+        public const string Title = "Paalcoördinaten";
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {

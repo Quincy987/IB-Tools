@@ -33,6 +33,7 @@
     .\build.ps1 -RevitVersion 2025 -NoDeploy
     .\build.ps1 -Debug                    # Revit started with IBTOOLS_DEBUG=1 (logs: %LOCALAPPDATA%\IBTools\logs)
     .\build.ps1 -OpenFile C:\temp\copy.rvt  # start Revit with a (copy of a) model
+    (The started Revit gets IBTOOLS_PILECHECK=0, no open-check question, unless it is already set.)
 #>
 
 param(
@@ -197,10 +198,22 @@ try {
             $env:IBTOOLS_DEBUG = "1"
             Write-Host "    Debug logging ENABLED ($env:LOCALAPPDATA\IBTools\logs\)" -ForegroundColor Magenta
         }
-        if ($OpenFile) {
-            $proc = Start-Process -FilePath $RevitExe -ArgumentList ('"{0}"' -f (Resolve-Path $OpenFile).Path) -PassThru
-        } else {
-            $proc = Start-Process -FilePath $RevitExe -PassThru
+        # The open check of Paalcoordinaten asks a question in a modal dialog; a test Revit
+        # started here must never hang on it. The caller can choose otherwise ($env:IBTOOLS_PILECHECK = "1").
+        # Only the started Revit inherits the 0: the caller's own environment is restored below.
+        $callerPileCheck = $env:IBTOOLS_PILECHECK
+        if (-not $callerPileCheck) {
+            $env:IBTOOLS_PILECHECK = "0"
+            Write-Host "    IBTOOLS_PILECHECK=0: geen vraag over paalcoordinaten bij openen (zet 1 om die te testen)" -ForegroundColor Gray
+        }
+        try {
+            if ($OpenFile) {
+                $proc = Start-Process -FilePath $RevitExe -ArgumentList ('"{0}"' -f (Resolve-Path $OpenFile).Path) -PassThru
+            } else {
+                $proc = Start-Process -FilePath $RevitExe -PassThru
+            }
+        } finally {
+            $env:IBTOOLS_PILECHECK = $callerPileCheck
         }
         Save-IBToolsRevitRecord -Process $proc -Owner $Owner -Version $RevitVersion
         Write-Host "    Revit gestart: pid $($proc.Id) (vastgelegd in $script:IBToolsPidFile)" -ForegroundColor Green

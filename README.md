@@ -9,7 +9,7 @@ alle tools; geen Dynamo Player, geen packages, geen Excel ernaast.
 | Paneel | Knop | Wat doet het | Vervangt (Dynamo) |
 |---|---|---|---|
 | Weergave | [Hide/Show](src/IBTools/Tools/Projectielijnen/README.md) | Projectielijnen van funderingen in de actieve view aan/uit. | Projectielijnen funderingspalen zichtbaar v1.0 |
-| Coördinaten | [Paalcoördinaten](src/IBTools/Tools/Paalcoordinaten/README.md) | Schrijft de RD-coördinaten van elke paal in X-/Y-coördinaat_funderingspaal. | Funderingspalen_coordinaten v1.0 |
+| Coördinaten | [Paalcoördinaten](src/IBTools/Tools/Paalcoordinaten/README.md) | Schrijft de RD-coördinaten van elke paal in X-/Y-coördinaat_funderingspaal. Houdt ze daarna zelf bij: verplaatste, gekopieerde en nieuwe palen direct, en bij openen een vraag als er palen achterlopen (alleen in een model op coördinaten). | Funderingspalen_coordinaten v1.0 |
 | Coördinaten | [Modelpunt](src/IBTools/Tools/Modelpunt/README.md) | Plaatst het IB-coördinaatpunt op een RD-coördinaat en NAP-hoogte. | Modelpoint op coordinaat v1.1 |
 | Model | [Worksets](src/IBTools/Tools/Worksets/README.md) | Zet worksharing aan en maakt de IB-standaardworksets 01 t/m 06. | IB_Worksets v1.0 |
 | Kademuren | [Remmingwerk](src/IBTools/Tools/Remmingwerk/README.md) | Plaatst een standaard remmingwerk langs modellijnen. | Remmingwerk v1.2 |

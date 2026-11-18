@@ -632,7 +632,273 @@ def show_remmingwerk():
     mark("end")
 
 
-SCENES = {"ibtools": lambda: show(), "remmingwerk": show_remmingwerk}
+# ---------------------------------------------------------------- Paalcoördinaten, automatic update
+PILE_VIEW, PILE_SCHEDULE = "IB demo - palen", "IB demo - palenstaat"
+X_PARAM, Y_PARAM = PILE_PARAMS[0][0], PILE_PARAMS[1][0]
+
+
+def exec_res(code, timeout=180):
+    """vm_exec for a snippet that reports with sb.AppendLine("RES|..."): the fields after RES|."""
+    out = vm_exec(code, timeout)
+    m = re.search(r"^RES\|(.*)$", out, re.M)
+    if not m:
+        log("exec without RES line: " + out[:400].replace("\n", " / "))
+        return []
+    return [f.strip() for f in m.group(1).split("|")]
+
+
+def pile_xy(pile_id):
+    """(x, y) as the pile schedule shows them: the meter value, 3 decimals; None when unreadable."""
+    r = exec_res('''var e = doc.GetElement(new ElementId(%s)); var u = doc.GetUnits().GetFormatOptions(SpecTypeId.Length).GetUnitTypeId();
+      var ci = System.Globalization.CultureInfo.InvariantCulture;
+      sb.AppendLine("RES|" + UnitUtils.ConvertFromInternalUnits(e.LookupParameter("%s").AsDouble(), u).ToString("0.000", ci)
+        + "|" + UnitUtils.ConvertFromInternalUnits(e.LookupParameter("%s").AsDouble(), u).ToString("0.000", ci));''' % (pile_id, X_PARAM, Y_PARAM))
+    return (r[0], r[1]) if len(r) == 2 else None
+
+
+def select(ids):
+    vm_exec('uiDoc.Selection.SetElementIds(new List<ElementId>{%s}); sb.Append("ok");'
+            % ", ".join("new ElementId(%s)" % i for i in ids))
+
+
+def click_in_view(view_name):
+    """Clicks an empty corner of the open view with this name (keyboard focus for Ctrl+Z)."""
+    r = exec_res('''foreach (var uv in uiDoc.GetOpenUIViews()) { var vw = doc.GetElement(uv.ViewId) as View;
+        if (vw != null && vw.Name == "%s") { var q = uv.GetWindowRectangle(); sb.AppendLine("RES|" + q.Left + "|" + q.Top + "|" + q.Right + "|" + q.Bottom); } }''' % view_name)
+    if len(r) != 4:
+        return False
+    left, top, right, bottom = [int(v) for v in r]
+    x, y = left + 70, bottom - 70
+    smooth_move(x, y, 0.5)
+    mouse.click(coords=(x, y))
+    time.sleep(0.6)
+    return True
+
+
+def show_paalcoordinaten():
+    """Short video of the automatic Paalcoördinaten update: the question when a model with empty
+    coordinates is opened, a moved pile (with Ctrl+Z / Ctrl+Y) and a copied pile. Needs a Revit
+    started with IBTOOLS_PILECHECK=1 (run-demo.ps1 does that for this scene)."""
+    global REC
+    import threading
+    from pywinauto import keyboard
+    hwnd = main_window()
+    if not answer_startup_dialogs(900):
+        raise RuntimeError("demo model did not open (see log)")
+    hwnd = main_window(60)
+    win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+    win32gui.SetWindowPos(hwnd, win32con.HWND_TOP, 0, 0, W, H, 0)
+    try:
+        win32gui.SetForegroundWindow(hwnd)
+    except Exception:  # noqa: BLE001
+        pass
+    time.sleep(1.5)
+    dismiss_revit_warnings()
+
+    # ---- preparation (not recorded): parameters, three named piles, a schedule and a pile view
+    prepare_model()
+    r = exec_res('''var piles = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_StructuralFoundation).WhereElementIsNotElementType()
+        .Where(e => e.Location is LocationPoint && e.LookupParameter("%s") != null).ToList();
+      var a = piles.OrderBy(e => e.Id.IntegerValue).First(); var pa = ((LocationPoint)a.Location).Point;
+      var three = new List<Element> { a };
+      three.AddRange(piles.Where(e => e.Id != a.Id).OrderBy(e => ((LocationPoint)e.Location).Point.DistanceTo(pa)).Take(2));
+      var names = new[] { "Paal A", "Paal B", "Paal C" };
+      for (int i = 0; i < three.Count; i++) { three[i].get_Parameter(BuiltInParameter.ALL_MODEL_MARK).Set(names[i]); }
+      sb.AppendLine("RES|" + string.Join(",", three.Select(e => e.Id.IntegerValue)) + "|" + piles.Count);''' % X_PARAM)
+    if len(r) != 2 or len(r[0].split(",")) != 3:
+        raise RuntimeError("no three piles with the coordinate parameters: %s" % r)
+    pa, pb, pc = r[0].split(",")
+    n_piles = int(r[1])
+    log("Piles A/B/C: %s (of %d)" % (r[0], n_piles))
+
+    r = exec_res('''var s = ViewSchedule.CreateSchedule(doc, new ElementId(BuiltInCategory.OST_StructuralFoundation));
+      s.Name = "%s"; var fields = s.Definition.GetSchedulableFields(); ScheduleField mark = null;
+      foreach (var w in new[] { "Mark", "%s", "%s" }) { var f = fields.FirstOrDefault(x => x.GetName(doc) == w);
+        if (f == null) { sb.AppendLine("missing field " + w); continue; }
+        var sf = s.Definition.AddField(f); sf.GridColumnWidth = w == "Mark" ? 0.09 : 0.13;   // feet; narrow, the text is enlarged later
+        if (w == "Mark") { mark = sf; }
+        else { var fo = sf.GetFormatOptions(); fo.UseDefault = false; fo.SetUnitTypeId(UnitTypeId.Millimeters); fo.Accuracy = 0.001; sf.SetFormatOptions(fo); } }
+      if (mark != null) { s.Definition.AddFilter(new ScheduleFilter(mark.FieldId, ScheduleFilterType.Contains, "Paal"));
+        s.Definition.AddSortGroupField(new ScheduleSortGroupField(mark.FieldId)); }
+      var vft = new FilteredElementCollector(doc).OfClass(typeof(ViewFamilyType)).Cast<ViewFamilyType>().First(t => t.ViewFamily == ViewFamily.ThreeDimensional);
+      var v = View3D.CreateIsometric(doc, vft.Id); v.Name = "%s"; v.DetailLevel = ViewDetailLevel.Fine; v.DisplayStyle = DisplayStyle.ShadingWithEdges;
+      var keep = new ElementId(BuiltInCategory.OST_StructuralFoundation); int hidden = 0;
+      foreach (Category c in doc.Settings.Categories) { if (c.CategoryType != CategoryType.Model || c.Id == keep) { continue; }
+        try { if (v.CanCategoryBeHidden(c.Id)) { v.SetCategoryHidden(c.Id, true); hidden++; } } catch (Exception) { } }
+      sb.AppendLine("RES|" + s.Definition.GetFieldCount() + "|" + hidden);''' % (PILE_SCHEDULE, X_PARAM, Y_PARAM, PILE_VIEW))
+    log("Schedule fields / hidden categories: %s" % r)
+    for name in (PILE_SCHEDULE, PILE_VIEW):
+        try:
+            vm("activate", name)
+        except Exception as e:  # noqa: BLE001
+            log("activate %s failed: %s" % (name, e))
+    select([pa, pb, pc])
+    zoom_selection(3500)
+    select([])
+
+    # Save the model with the (still empty) coordinates and close it: an empty project takes its
+    # place, so the recorded part can open the model like a user would on Monday morning.
+    r = exec_res('''trans.Commit(); var path = doc.PathName; doc.Save();
+      var app = uiApp.Application; var other = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(path), "IB Tools demo - leeg.rvt");
+      var empty = app.NewProjectDocument(UnitSystem.Metric); empty.SaveAs(other, new SaveAsOptions { OverwriteExistingFile = true }); empty.Close(false);
+      uiApp.OpenAndActivateDocument(other);
+      try { doc.Close(false); sb.AppendLine("closed"); } catch (Exception ex) { sb.AppendLine("close failed: " + ex.Message); }
+      sb.AppendLine("RES|" + path);''', timeout=300)
+    if not r:
+        raise RuntimeError("saving and closing the demo model failed")
+    model_path = r[0]
+    log("Model saved and closed: " + model_path)
+    time.sleep(3)
+    hide_chat_pane()
+
+    REC = subprocess.Popen([sys.executable, os.path.join(HERE, "rec.py"), FRAMES, "0", "0", str(W), str(H)])
+    time.sleep(2.5)
+    park_mouse()
+
+    # ---- 1. opening a model: the question
+    mark("card", "Paalcoördinaten blijven vanzelf kloppen|IB Tools houdt X-/Y-coördinaat_funderingspaal zelf bij|Nieuw in IB Tools 2.1.1")
+    mark("card", "1 / 3  Model openen|Zijn de paalcoördinaten leeg of verouderd? Dan vraagt IB Tools het.|Alleen in een model op RD-coördinaten")
+    opener = threading.Thread(target=lambda: vm_exec(
+        'trans.Commit(); uiApp.OpenAndActivateDocument(@"%s"); sb.AppendLine("RES|ok");' % model_path, timeout=600), daemon=True)
+    opener.start()
+    question = None
+    deadline = time.time() + 600
+    while time.time() < deadline and question is None:
+        handle_startup_dialogs_once()                      # "Unresolved References" while the model opens
+        question = find_window(title_re=r"^IB Tools - Paalco", timeout=2)
+    if question is None:
+        raise RuntimeError("the open-check question did not appear")
+    time.sleep(0.8)
+    mark("caption", "Het kademodel is net geopend. De %d palen hebben nog geen coördinaten, dus IB Tools vraagt wat je wilt." % n_piles,
+         step="1/3 Model openen")
+    time.sleep(7)
+    mark("caption", "Nu bijwerken: alle palen in één stap. \"Niet nu\" verandert niets; dan komt de vraag bij de volgende keer openen terug.",
+         step="1/3 Model openen")
+    links = [d for d in question.descendants() if (d.window_text() or "").startswith("Nu bijwerken")]
+    if not links:
+        raise RuntimeError("'Nu bijwerken' not found in the question")
+    time.sleep(3)
+    click_element(links[0], hover=1.2)
+    res = find_window(auto_id="DetailsBox", timeout=300)
+    if not res:
+        raise RuntimeError("report window after 'Nu bijwerken' not found")
+    summary, details = read_result(res)
+    log("Open check result: " + summary + "\n" + details[:1500])
+    mark("caption", "Het rapport: " + summary + " Per paal de oude en de nieuwe waarde, te kopiëren naar het klembord.",
+         step="1/3 Model openen")
+    close_result(res, 8)
+    dismiss_revit_warnings()
+    opener.join(timeout=60)
+    park_mouse()
+
+    # ---- 2. moving a pile (the card hides the window arrangement)
+    mark("card", "2 / 3  Paal verplaatsen|De coördinaten volgen direct, zonder op een knop te drukken|In dezelfde stap: één Ctrl+Z draait beide terug")
+    hide_chat_pane()
+    for name in (PILE_SCHEDULE, PILE_VIEW):
+        try:
+            vm("activate", name)
+        except Exception as e:  # noqa: BLE001
+            log("activate %s failed: %s" % (name, e))
+    # only the pile view and the schedule stay open (the empty helper project goes too), then tile
+    log("Close helper project: %s" % exec_res('''int n = 0; foreach (Document d in uiApp.Application.Documents) {
+        if (d.PathName.EndsWith("IB Tools demo - leeg.rvt")) { try { d.Close(false); n++; } catch (Exception ex) { sb.AppendLine("close failed: " + ex.Message); } } }
+      sb.AppendLine("RES|" + n);'''))
+    exec_res('''foreach (var uv in uiDoc.GetOpenUIViews()) { var vw = doc.GetElement(uv.ViewId) as View;
+        if (vw != null && vw.Name != "%s" && vw.Name != "%s") { try { uv.Close(); } catch (Exception) { } } }
+      uiApp.PostCommand(RevitCommandId.LookupPostableCommandId(PostableCommand.TileViews)); sb.AppendLine("RES|ok");''' % (PILE_VIEW, PILE_SCHEDULE))
+    time.sleep(3)
+    # Ctrl + mouse wheel over the schedule enlarges its text (hover only: a click would make the
+    # schedule the active view and switch the ribbon).
+    r = exec_res('''foreach (var uv in uiDoc.GetOpenUIViews()) { var vw = doc.GetElement(uv.ViewId) as View;
+        if (vw != null && vw.Name == "%s") { var q = uv.GetWindowRectangle(); sb.AppendLine("RES|" + q.Left + "|" + q.Top + "|" + q.Right + "|" + q.Bottom); } }''' % PILE_SCHEDULE)
+    if len(r) == 4:
+        left, top, right, bottom = [int(v) for v in r]
+        sx, sy = (left + right) // 2, top + (bottom - top) // 3
+        win32api.SetCursorPos((sx, sy))
+        time.sleep(0.4)
+        keyboard.send_keys("{VK_CONTROL down}")
+        try:
+            for _ in range(4):
+                mouse.scroll(coords=(sx, sy), wheel_dist=1)
+                time.sleep(0.25)
+        finally:
+            keyboard.send_keys("{VK_CONTROL up}")
+        log("Schedule tile %s: zoomed in with Ctrl + wheel" % (r,))
+    select([pa, pb, pc])
+    zoom_selection(3500)
+    select([pa])
+    time.sleep(1.5)
+    before = pile_xy(pa)
+    log("Paal A before: %s" % (before,))
+    if not before:
+        raise RuntimeError("coordinates of Paal A not readable")
+    mark("caption", "Het model naast de palenstaat. Paal A is geselecteerd: X %s, Y %s (RD, in meters)." % before,
+         step="2/3 Verplaatsen")
+    time.sleep(7)
+    exec_res('''var a = doc.GetElement(new ElementId(%s)); var b = doc.GetElement(new ElementId(%s));
+      var pa = ((LocationPoint)a.Location).Point; var pb = ((LocationPoint)b.Location).Point;
+      var d = new XYZ(pa.X - pb.X, pa.Y - pb.Y, 0).Normalize();
+      ElementTransformUtils.MoveElement(doc, a.Id, d * (2000 / 304.8)); sb.AppendLine("RES|ok");''' % (pa, pb))
+    time.sleep(1.2)
+    after = pile_xy(pa)
+    log("Paal A after move: %s" % (after,))
+    if not after or after == before:
+        raise RuntimeError("Paal A was moved but its coordinates did not follow: %s -> %s" % (before, after))
+    mark("caption", "Paal A is 2 m verschoven. De palenstaat klopt meteen weer: X %s, Y %s." % after, step="2/3 Verplaatsen")
+    time.sleep(8)
+    if click_in_view(PILE_VIEW):
+        keyboard.send_keys("^z")
+        time.sleep(1.8)
+        undone = pile_xy(pa)
+        log("Paal A after Ctrl+Z: %s" % (undone,))
+        if undone == before:
+            mark("caption", "Eén Ctrl+Z: de paal staat terug, en de coördinaten ook (X %s, Y %s)." % undone, step="2/3 Verplaatsen")
+            time.sleep(6)
+            keyboard.send_keys("^y")
+            time.sleep(1.8)
+            redone = pile_xy(pa)
+            log("Paal A after Ctrl+Y: %s" % (redone,))
+            if redone == after:
+                mark("caption", "En Ctrl+Y zet beide weer terug op de nieuwe plek.", step="2/3 Verplaatsen")
+                time.sleep(5)
+        else:
+            log("Ctrl+Z did not restore the coordinates: no caption about undo")
+    park_mouse()
+
+    # ---- 3. copying a pile
+    mark("card", "3 / 3  Kopiëren en nieuw plaatsen|Elke nieuwe paal krijgt direct zijn eigen coördinaten|Geen kopie meer met de waarden van het origineel")
+    select([pa])
+    here = pile_xy(pa)
+    time.sleep(1)
+    mark("caption", "Paal A wordt gekopieerd, 3 m verderop. Zonder IB Tools zou de kopie de coördinaten van Paal A meenemen.",
+         step="3/3 Kopiëren")
+    time.sleep(6)
+    r = exec_res('''var a = doc.GetElement(new ElementId(%s)); var b = doc.GetElement(new ElementId(%s));
+      var pa = ((LocationPoint)a.Location).Point; var pb = ((LocationPoint)b.Location).Point;
+      var d = new XYZ(pa.X - pb.X, pa.Y - pb.Y, 0).Normalize();
+      var id = ElementTransformUtils.CopyElement(doc, a.Id, d * (3000 / 304.8)).First();
+      doc.GetElement(id).get_Parameter(BuiltInParameter.ALL_MODEL_MARK).Set("Paal D (kopie)");
+      sb.AppendLine("RES|" + id.IntegerValue);''' % (pa, pb))
+    if not r:
+        raise RuntimeError("copying Paal A failed")
+    copy = r[0]
+    time.sleep(1.2)
+    select([copy])
+    copied = pile_xy(copy)
+    log("Copy %s: %s (Paal A: %s)" % (copy, copied, here))
+    if not copied or copied == here:
+        raise RuntimeError("the copy did not get its own coordinates: %s" % (copied,))
+    mark("caption", "De kopie staat als Paal D in de palenstaat, met zijn eigen coördinaten: X %s, Y %s." % copied,
+         step="3/3 Kopiëren")
+    time.sleep(8)
+    select([])
+    park_mouse()
+    time.sleep(1.0)
+    mark("card", "Paalcoördinaten|Openen · verplaatsen · kopiëren: altijd actuele RD-coördinaten|Ingenieursbureau Gemeente Amsterdam")
+    mark("end")
+
+
+SCENES = {"ibtools": lambda: show(), "remmingwerk": show_remmingwerk, "paalcoordinaten": show_paalcoordinaten}
 
 
 def main():

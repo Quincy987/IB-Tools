@@ -43,6 +43,11 @@ voorkeur `$env:IBTOOLS_LOCK_OWNER = "<threadnaam>"`, zodat `release` in een volg
 - Let op: elke Revit 2023 op deze pc laadt IB Tools uit dezelfde Addins-map. Een half-af build
   die je deployt, komt dus ook in andere sessies terecht zodra die Revit herstarten.
 
+- De Revit die `build.ps1` start krijgt `IBTOOLS_PILECHECK=0`: de vraag "Paalcoördinaten
+  bijwerken?" bij het openen van een model komt dan niet (de controle draait wel en staat in het
+  log). Anders blijft een onbemande test op dat venster hangen. Wil je de vraag zelf zien, zet dan
+  vooraf `$env:IBTOOLS_PILECHECK = "1"`; `build.ps1` laat een gezette waarde staan.
+
 ## Exitcodes `build.ps1`
 
 `0` ok · `1` build mislukt · `2` testslot bezet · `3` deploy geblokkeerd

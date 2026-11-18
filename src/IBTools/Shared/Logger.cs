@@ -53,6 +53,13 @@ namespace IBTools.Shared
         public static void Info(string message) => Log("INFO", message);
 
         /// <summary>
+        /// Log a detail that is only interesting when tracing (frequent events such as an updater
+        /// that found nothing to do). Same file and switch as <see cref="Info"/>.
+        /// </summary>
+        /// <param name="message">Message to log.</param>
+        public static void Debug(string message) => Log("DEBUG", message);
+
+        /// <summary>
         /// Log warning message (unexpected but recoverable situations).
         /// </summary>
         /// <param name="message">Message to log.</param>
